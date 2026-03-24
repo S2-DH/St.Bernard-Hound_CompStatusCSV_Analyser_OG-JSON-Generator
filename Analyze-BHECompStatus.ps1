@@ -44,7 +44,7 @@
     .\Analyze-BHECompStatus.ps1 -NoMenu
 
 .NOTES
-    Author  : SDH / SpecterOps TAM Toolkit
+    Author  : SDH / BHE SharpHound Toolkit
     Version : 2.0
     Requires: PowerShell 5.1+
     Context : BloodHound Enterprise - session and local group collection diagnostics
@@ -249,7 +249,7 @@ function Import-CompStatusCsv([string]$Path) {
 Write-Host ''
 Write-Host '  +------------------------------------------------------+' -ForegroundColor Cyan
 Write-Host '  |  BloodHound Enterprise - CompStatus Analyser  v2.0  |' -ForegroundColor Cyan
-Write-Host '  |  SpecterOps TAM Toolkit                             |' -ForegroundColor Cyan
+Write-Host '  |  SharpHound Toolkit                                 |' -ForegroundColor Cyan
 Write-Host '  +------------------------------------------------------+' -ForegroundColor Cyan
 Write-Host ''
 
@@ -461,13 +461,43 @@ $failSrcHeader = if ($isMultiFile) { '<th>Source File</th>' } else { '' }
 
 # Remediation cards
 $remCards = foreach ($cg in ($catGroups | Where-Object { $_.Name -ne 'Success' })) {
-    $cat      = $cg.Name
-    $color    = if ($BadgeColour.ContainsKey($cat)) { $BadgeColour[$cat] } else { '#64748b' }
-    $tip      = Get-RemediationHtml -Cat $cat
-    $affected = ($allRows | Where-Object { $_.Category -eq $cat } |
-                 Select-Object -ExpandProperty ComputerName -Unique |
-                 ForEach-Object { Get-CanonicalName $_ } | Sort-Object -Unique) -join ', '
-    "<div class='remediation-card' style='border-left:4px solid $color'><h3>$(Get-Badge $cat) &nbsp; $($cg.Count) occurrence(s)</h3><p>$tip</p><p><b>Affected computers:</b><br><code>$(HE $affected)</code></p></div>"
+    $cat   = $cg.Name
+    $color = if ($BadgeColour.ContainsKey($cat)) { $BadgeColour[$cat] } else { '#64748b' }
+    $tip   = Get-RemediationHtml -Cat $cat
+
+    # Build one row per unique computer affected by this category
+    $affectedRows = $allRows | Where-Object { $_.Category -eq $cat } | Group-Object {
+        Get-CanonicalName $_.ComputerName
+    } | Sort-Object Name | ForEach-Object {
+        $compName = $_.Name
+        $grp      = @($_.Group)
+        $ip       = ($grp | Select-Object -ExpandProperty IPAddress -Unique |
+                     Where-Object { $_ -and $_ -ne 'Unknown' } | Select-Object -First 1)
+        if (-not $ip) { $ip = 'Unknown' }
+        $tasks    = ($grp | Select-Object -ExpandProperty Task -Unique | Sort-Object) -join '<br>'
+        $methods  = (@($grp | Select-Object -ExpandProperty Task -Unique |
+                       ForEach-Object { Get-CollectionMethod $_ } | Sort-Object -Unique) |
+                     ForEach-Object { Get-MethodBadge $_ }) -join ' '
+        "<tr><td class='cn-cell' style='font-family:Consolas,monospace;font-size:12px'>$(HE $compName)</td><td style='font-size:12px;color:var(--muted)'>$(HE $ip)</td><td style='font-size:12px;color:var(--muted)'>$tasks</td><td>$methods</td></tr>"
+    }
+
+    $affectedTable = "<div style='margin-top:10px;overflow-x:auto;border-radius:6px;border:1px solid var(--border)'>" +
+        "<table style='width:100%;border-collapse:collapse'>" +
+        "<thead><tr style='background:var(--surface2)'>" +
+        "<th style='padding:7px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap'>Computer</th>" +
+        "<th style='padding:7px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap'>IP Address</th>" +
+        "<th style='padding:7px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap'>Failed Task(s)</th>" +
+        "<th style='padding:7px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap'>Method</th>" +
+        "</tr></thead>" +
+        "<tbody style='font-size:13px'>$($affectedRows -join '')</tbody>" +
+        "</table></div>"
+
+    "<div class='remediation-card' style='border-left:4px solid $color'>" +
+        "<h3>$(Get-Badge $cat) &nbsp; $($cg.Count) occurrence(s)</h3>" +
+        "<p style='margin-bottom:8px'>$tip</p>" +
+        "<p style='font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px'>Affected computers ($(@($affectedRows).Count))</p>" +
+        "$affectedTable" +
+    "</div>"
 }
 
 # Not active
@@ -640,6 +670,9 @@ tbody td{padding:8px 13px;vertical-align:middle;}
 .remediation-card p,.remediation-card ul{color:var(--muted);font-size:13px;margin-bottom:5px;}
 .remediation-card ul{margin-left:18px;}
 .remediation-card code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:Consolas,monospace;font-size:12px;word-break:break-all;}
+.remediation-card table tbody tr{border-top:1px solid var(--border);}
+.remediation-card table tbody tr:hover{background:var(--surface2);}
+.remediation-card table tbody td{padding:7px 12px;vertical-align:top;}
 
 /* Not-active body */
 .details-body{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:14px 18px;font-size:13px;color:var(--muted);line-height:1.9;}
@@ -908,7 +941,7 @@ $multiCompTableHtml
 </section>
 
 </div>
-<footer>BloodHound Enterprise &#8212; SharpHound CompStatus Analyser v2.1 &nbsp;|&nbsp; SpecterOps TAM Toolkit &nbsp;|&nbsp; $reportDate</footer>
+<footer>BloodHound Enterprise &#8212; SharpHound CompStatus Analyser v2.1 &nbsp;|&nbsp; BHE SharpHound Toolkit &nbsp;|&nbsp; $reportDate</footer>
 
 <script>
 // ── Column width auto-fit ──────────────────────────────────────────────────
