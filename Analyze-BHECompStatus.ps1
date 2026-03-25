@@ -44,7 +44,7 @@
     .\Analyze-BHECompStatus.ps1 -NoMenu
 
 .NOTES
-    Author  : SDH / SpecterOps TAM Toolkit
+    Author  : SDH / BHE Toolkit
     Version : 2.0
     Requires: PowerShell 5.1+
     Context : BloodHound Enterprise - session and local group collection diagnostics
@@ -96,6 +96,10 @@ function Get-StatusCategory([string]$Status) {
     if ($s -like '*registry*')                   { return 'RegistryError' }
     if ($s -like '*collector failed*')           { return 'CollectorError' }
     if ($s -eq 'nonwindowsos')                   { return 'NonWindowsOS' }
+    if ($s -like 'timeout after*')               { return 'Timeout' }
+    if ($s -eq 'statusrpcserverunavailable')      { return 'RPCError' }   # NTSTATUS form — same bucket as Collector failed: RPC
+    if ($s -eq 'statusinvalidparameter')          { return 'CollectorError' }
+    if ($s -match '^-?[0-9]+$')                  { return 'NumericError' } # raw Win32/NTSTATUS code
     return 'Other'
 }
 
@@ -106,7 +110,13 @@ function Get-CollectionMethod([string]$Task) {
         'ComputerAvailability'                      { return 'TCP Port Scan' }
         'NetWkstaUserEnum'                          { return 'SMB / NetWkstaUserEnum' }
         'GetMembersInAlias*'                        { return 'SMB / SAMRPC' }
+        'OpenAlias*'                                { return 'SMB / SAMRPC' }
+        'SamConnect'                                { return 'SMB / SAMRPC' }
+        'OpenDomain*'                               { return 'SMB / SAMRPC' }
+        'GetAliases*'                               { return 'SMB / SAMRPC' }
+        'GetDomains'                                { return 'SMB / SAMRPC' }
         'LSAEnumerateAccountsWithUserRight'         { return 'RPC / LSARPC' }
+        'LSAOpenPolicy'                             { return 'RPC / LSARPC' }
         'ReadRegistrySettings - DotNetWmiRegistry*' { return 'WMI' }
         'ReadRegistrySettings - RemoteRegistry*'    { return 'Remote Registry (RRP)' }
         'ReadComputerProperties'                    { return 'LDAP' }
@@ -122,7 +132,13 @@ function Get-DataType([string]$Task) {
         'ComputerAvailability'                      { return 'Reachability' }
         'NetWkstaUserEnum'                          { return 'Active Sessions' }
         'GetMembersInAlias*'                        { return 'Local Group Members' }
+        'OpenAlias*'                                { return 'Local Group Handle' }
+        'SamConnect'                                { return 'SAM Connection' }
+        'OpenDomain*'                               { return 'SAM Domain Handle' }
+        'GetAliases*'                               { return 'Local Group Enumeration' }
+        'GetDomains'                                { return 'SAM Domain Enumeration' }
         'LSAEnumerateAccountsWithUserRight'         { return 'Privileged Rights' }
+        'LSAOpenPolicy'                             { return 'LSA Policy Handle' }
         'ReadRegistrySettings*'                     { return 'NTLM / Registry Config' }
         'ReadComputerProperties'                    { return 'Computer Attributes' }
         'ReadUserProperties'                        { return 'User Attributes' }
@@ -155,6 +171,8 @@ $BadgeColour = @{
     RegistryError  = '#ec4899'
     CollectorError = '#f59e0b'
     NonWindowsOS   = '#0891b2'
+    Timeout        = '#dc2626'
+    NumericError   = '#92400e'
     Other          = '#64748b'
 }
 
@@ -193,6 +211,8 @@ $Remediation = @{
     RPCError       = '<b>RPC Server Unavailable</b><br>TCP 135 is blocked or the target RPC service is not responding. Check: (1) Remote Registry service is started and set to Automatic on the target, (2) TCP 135 is open from the collector, (3) Dynamic RPC ports 49152-65535 are not blocked by an intermediate firewall or Windows Firewall rule.'
     RegistryError  = '<b>Remote Registry Access Denied</b><br>SharpHound tried to read <code>SYSTEM\CurrentControlSet\Control\Lsa\MSV1_0</code> via Remote Registry but was denied. Grant Read access to the collector account for that key via GPO (Security Settings &gt; Registry), or ensure the account is a Local Admin on the target. Also verify the Remote Registry service is running on the target.'
     CollectorError = '<b>Collector-side Exception</b><br>SharpHound threw an unhandled exception. Review the full error detail in the results table. Common causes: WMI timeouts, DNS resolution failures, .NET remoting issues. Ensure the collector host has TCP/UDP line-of-sight to the target on all required protocols.'
+    Timeout        = '<b>RPC / SMB Operation Timed Out</b><br>SharpHound connected to the machine but a specific RPC or SMB call did not complete within the allowed time. Common causes: (1) heavy load on the target at collection time, (2) network latency between collector and target subnet, (3) a software firewall allowing initial connection but blocking or rate-limiting specific RPC calls. The timeout value in the status field (e.g. <code>Timeout after 338 ms</code>) indicates how long SharpHound waited. Consider re-running collection during a low-load window or increasing the SharpHound timeout configuration.'
+    NumericError   = '<b>Raw Win32 / NTSTATUS Error Code</b><br>SharpHound received a numeric error code directly from the Windows RPC/SAM subsystem rather than a named status. Common codes: <code>53</code> = Network path not found (firewall or name resolution issue), <code>50</code> = Not supported (non-standard OS or service missing), <code>1745</code> = No more data. Check the Task column to identify which operation failed and correlate the code against Win32 error documentation. These are typically connectivity or service availability issues.'
     NonWindowsOS   = '<b>Non-Windows Operating System Detected</b><br>SharpHound identified this host as running a non-Windows OS (Linux, macOS, or similar). SharpHound cannot collect session or local group data from non-Windows hosts via SMB/RPC. If the machine is domain-joined (e.g. Linux with SSSD/Winbind), it will appear in BloodHound as a computer object but collection tasks will be skipped. No action is required unless the machine should be Windows — in that case verify the OS and AD computer object are in sync.'
     Other          = '<b>Uncategorised Error</b><br>Review the raw status message in the full results table. This may be a newer error type not yet mapped in this script.'
 }
@@ -252,7 +272,7 @@ function Import-CompStatusCsv([string]$Path) {
 Write-Host ''
 Write-Host '  +------------------------------------------------------+' -ForegroundColor Cyan
 Write-Host '  |  BloodHound Enterprise - CompStatus Analyser  v2.0  |' -ForegroundColor Cyan
-Write-Host '  |  SpecterOps TAM Toolkit                             |' -ForegroundColor Cyan
+Write-Host '  |  BHE Toolkit                                        |' -ForegroundColor Cyan
 Write-Host '  +------------------------------------------------------+' -ForegroundColor Cyan
 Write-Host ''
 
@@ -483,7 +503,10 @@ $compSummaryRows = foreach ($entry in $problemComputers) {
                      Select-Object -ExpandProperty Task -Unique |
                      ForEach-Object { Get-CollectionMethod $_ } |
                      Sort-Object -Unique) | ForEach-Object { Get-MethodBadge $_ }) -join ' '
-    "<tr id='$cid'><td class='cn-cell' title='$(HE $entry.Name)'>$(HE $entry.Name)</td><td>$(HE $ip)</td><td style='text-align:center'>$ok</td><td style='text-align:center'>$fail</td><td>$badgesHtml</td><td>$failMethods</td><td style='text-align:center'>$tlCell</td><td style='font-family:Consolas,monospace;font-size:11px;color:var(--muted)'>$(HE $lineNums)</td>$srcCol</tr>"
+    # Does this computer have any non-availability task failures?
+    $hasTaskFail = (@($g | Where-Object { $_.Task -ne 'ComputerAvailability' -and $_.Category -ne 'Success' }).Count) -gt 0
+    $taskFailAttr = if ($hasTaskFail) { 'data-taskfail="1"' } else { 'data-taskfail="0"' }
+    "<tr id='$cid' $taskFailAttr><td class='cn-cell' title='$(HE $entry.Name)'>$(HE $entry.Name)</td><td>$(HE $ip)</td><td style='text-align:center'>$ok</td><td style='text-align:center'>$fail</td><td>$badgesHtml</td><td>$failMethods</td><td style='text-align:center'>$tlCell</td><td style='font-family:Consolas,monospace;font-size:11px;color:var(--muted)'>$(HE $lineNums)</td>$srcCol</tr>"
 }
 $compSrcHeader = if ($isMultiFile) { '<th>Source File(s)</th>' } else { '' }
 
@@ -661,6 +684,7 @@ section{margin-bottom:28px;}
 /* Collapsible sections */
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:14px;user-select:none;}
 .sec-hdr h2{border-bottom:none;padding-bottom:0;margin-bottom:0;font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;}
+.sec-subtitle{font-size:11px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;}
 .sec-hdr:hover h2{color:var(--text);}
 .sec-hdr-right{display:flex;align-items:center;gap:8px;}
 .collapse-btn{color:var(--muted);font-size:11px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 9px;font-family:Consolas,monospace;}
@@ -691,7 +715,7 @@ section{margin-bottom:28px;}
 table{width:100%;border-collapse:collapse;}
 thead th{background:var(--surface2);padding:9px 13px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
 tbody tr{border-top:1px solid var(--border);}
-tbody tr:hover{background:var(--surface2);}
+tbody tr:hover td{filter:brightness(1.15);}
 tbody td{padding:8px 13px;vertical-align:middle;}
 .status-cell{font-size:12px;color:var(--muted);word-break:break-word;}
 /* Computer name cell — never wraps, uses monospace, shrinks font slightly */
@@ -712,7 +736,7 @@ tbody td{padding:8px 13px;vertical-align:middle;}
 .remediation-card ul{margin-left:18px;}
 .remediation-card code{background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:Consolas,monospace;font-size:12px;word-break:break-all;}
 .remediation-card table tbody tr{border-top:1px solid var(--border);}
-.remediation-card table tbody tr:hover{background:var(--surface2);}
+.remediation-card table tbody tr:hover td{filter:brightness(1.15);}
 .remediation-card table tbody td{padding:7px 12px;vertical-align:top;}
 
 /* Not-active body */
@@ -743,6 +767,15 @@ tbody td{padding:8px 13px;vertical-align:middle;}
 .highlight-row td{animation:rowFlash 1.8s ease-out;}
 
 footer{text-align:center;padding:22px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:36px;}
+#back-to-top{
+  background:none;border:1px solid var(--accent);border-radius:6px;
+  color:var(--accent);padding:5px 12px;font-size:12px;font-weight:600;
+  cursor:pointer;white-space:nowrap;margin-left:auto;flex-shrink:0;
+  display:flex;align-items:center;gap:4px;
+  opacity:0.25;pointer-events:auto;
+  transition:opacity .2s,transform .2s;
+}
+#back-to-top:hover{background:rgba(56,189,248,.12);}
 .pg-bar{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:8px;}
 .pg-btn{background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 9px;font-size:12px;cursor:pointer;min-width:32px;}
 .pg-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
@@ -815,6 +848,7 @@ th.sort-asc .sort-icon, th.sort-desc .sort-icon{opacity:1;}
     <input id="spotlight-input" type="text" placeholder="Type a computer name (comma-separate for multiple)  e.g.  DC01, SERVER02, WORKSTATION01" autocomplete="off">
     <button id="sp-clear" onclick="clearSpotlight()" title="Clear search">&#10005;</button>
     <span class="spotlight-hint">Comma-separate for multiple</span>
+    <button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Back to top">&#8679; Top</button>
     <!-- Dropdown panel is absolute child of .spotlight-inner so it floats over page -->
     <div id="spotlight-results"><div class="sp-cards" id="sp-cards"></div></div>
   </div>
@@ -838,25 +872,25 @@ th.sort-asc .sort-icon, th.sort-desc .sort-icon{opacity:1;}
   </div>
   <div id="sec-summary-body">
     <div class="stat-grid">
-      <div class="stat-card info clickable" onclick="clearAllTableFilters();jumpTo('sec-audit')" title="Jump to Full Audit Log (all results)">
+      <div class="stat-card info clickable" onclick="cardJump('sec-audit',null,null)" title="Jump to Full Audit Log — all results">
         <div class="val">$totalRows</div><div class="lbl">Total task results <span class="arr">&#8599;</span></div>
       </div>
-      <div class="stat-card info clickable" onclick="clearAllTableFilters();jumpTo('sec-issues')" title="Jump to Computers with Issues">
+      <div class="stat-card info clickable" onclick="cardJump('sec-issues',null,null)" title="Jump to Computers with Issues">
         <div class="val">$uniqueComputers</div><div class="lbl">Unique computers <span class="arr">&#8599;</span></div>
       </div>
-      <div class="stat-card success clickable" onclick="clearAllTableFilters();jumpTo('sec-audit')" title="Jump to Full Audit Log (all results)">
+      <div class="stat-card success clickable" onclick="cardJump('sec-audit','all','Success')" title="Jump to Audit Log — filter to Successful only">
         <div class="val">$($successRows.Count)</div><div class="lbl">Successful ($pctSuccess%) <span class="arr">&#8599;</span></div>
       </div>
-      <div class="stat-card danger clickable" onclick="clearAllTableFilters();jumpTo('sec-failures')" title="Jump to All Failures">
+      <div class="stat-card danger clickable" onclick="cardJump('sec-failures',null,null)" title="Jump to All Failed Results">
         <div class="val">$($failRows.Count)</div><div class="lbl">Failed ($pctFail%) <span class="arr">&#8599;</span></div>
       </div>
-      <div class="stat-card warn clickable" onclick="clearAllTableFilters();jumpTo('sec-notactive')" title="Jump to Not Active list">
+      <div class="stat-card warn clickable" onclick="cardJump('sec-notactive',null,null)" title="Jump to Not Active list">
         <div class="val">$($notActiveOnly.Count)</div><div class="lbl">Not Active computers <span class="arr">&#8599;</span></div>
       </div>
-      <div class="stat-card success clickable" onclick="clearAllTableFilters();jumpTo('sec-issues')" title="Jump to Computers with Issues">
+      <div class="stat-card success clickable" onclick="cardJump('sec-audit','all','Success')" title="Jump to Audit Log — filter to fully successful computers">
         <div class="val">$($fullyOkComputers.Count)</div><div class="lbl">Fully successful <span class="arr">&#8599;</span></div>
       </div>
-      <div class="stat-card danger clickable" onclick="clearAllTableFilters();jumpTo('sec-issues')" title="Jump to Task-level errors">
+      <div class="stat-card danger clickable" onclick="cardJump('sec-issues','comp','taskfail')" title="Jump to Issues — filter to computers with task-level errors">
         <div class="val">$($taskFailComputers.Count)</div><div class="lbl">Task-level errors <span class="arr">&#8599;</span></div>
       </div>
     </div>
@@ -892,6 +926,9 @@ $multiCompTableHtml
     <span class="collapse-btn" id="sec-issues-btn">&#9660;</span>
   </div>
   <div id="sec-issues-body">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span id="comp-count" class="row-count"></span>
+    </div>
     <div class="filter-bar" id="comp-filter-bar">
       <input class="table-search" type="text" id="compSearch" placeholder="Filter computers..." oninput="applyCompFilters()">
       <select class="filter-select" id="comp-cat-filter" onchange="applyCompFilters()" title="Filter by error category">
@@ -975,7 +1012,12 @@ $multiCompTableHtml
     <span class="collapse-btn" id="sec-notactive-btn">&#9660;</span>
   </div>
   <div id="sec-notactive-body">
-    <div class="details-body">$notActiveHtml</div>
+    <div class="filter-bar" style="margin-bottom:10px">
+      <span class="row-count">$($notActiveOnly.Count) computers</span>
+      <button class="filter-btn" onclick="exportNotActive()">&#128196; Export CSV</button>
+      <button class="filter-btn" onclick="printSection('sec-notactive')">&#128424; Print / PDF</button>
+    </div>
+    <div class="details-body" id="notactive-list">$notActiveHtml</div>
   </div>
 </section>
 
@@ -1006,18 +1048,29 @@ $multiCompTableHtml
 </section>
 
 </div>
-<footer>BloodHound Enterprise &#8212; SharpHound CompStatus Analyser v2.1 &nbsp;|&nbsp; SpecterOps TAM Toolkit &nbsp;|&nbsp; $reportDate</footer>
+
+<footer>BloodHound Enterprise &#8212; SharpHound CompStatus Analyser v2.1 &nbsp;|&nbsp; BHE Toolkit &nbsp;|&nbsp; $reportDate</footer>
 
 <script>
-// ── Column width auto-fit ──────────────────────────────────────────────────
-// applyColWidths removed — cn-cell handles width via CSS (avoids O(n) DOM scan on large datasets)
-window.addEventListener('load',function(){ failFiltered=FAIL_DATA.slice(); allFiltered=ALL_DATA.slice(); initFilters(); buildRemPills(); renderFailPage(1); renderAllPage(1); });
-
-// ── Pre-built data from PowerShell ───────────────────────────────────────
+// ── Pre-built data from PowerShell (must come before load listener) ───────
 var COMP_SUBNETS=[$compSubnetJs];
 var FAIL_DATA=$failJsonData;
 var ALL_DATA=$allJsonData;
-var FAIL_SUBNETS=[$failSubnetJs]; // populated from PS
+var FAIL_SUBNETS=[$failSubnetJs];
+
+// ── Init on load ──────────────────────────────────────────────────────────
+window.addEventListener('load',function(){
+  failFiltered=FAIL_DATA.slice();
+  allFiltered=ALL_DATA.slice();
+  initFilters();
+  buildRemPills();
+  renderFailPage(1);
+  renderAllPage(1);
+  // Set initial counts for static tables
+  var compRows=document.querySelectorAll('#compTable tbody tr').length;
+  var cc=document.getElementById('comp-count');
+  if(cc&&compRows>0) cc.textContent='Showing '+compRows+' of '+compRows+' computers';
+});
 
 // ── Chart ──────────────────────────────────────────────────────────────────
 var chartLabels=[$chartLabels],chartValues=[$chartValues],chartColors=[$chartColors];
@@ -1037,6 +1090,60 @@ chartLabels.forEach(function(l,i){
   d.innerHTML='<div class="chart-legend-dot" style="background:'+chartColors[i]+'"></div><span><b>'+chartValues[i]+'</b> -- '+l+'</span>';
   leg.appendChild(d);
 });
+
+// ── Card jump — jump to section with optional pre-filter ─────────────────
+// table: null=no filter, 'all'=allTable, 'comp'=compTable
+// filter: null=clear all, 'Success'=filter audit to success,
+//         'ok'=comp table show only ok-status, 'fail'=comp table show only fail-status
+function setSecSubtitle(secId, text){
+  // Add/update a small subtitle tag below the section h2 to show active filter context
+  var hdr=document.querySelector('#'+secId+' .sec-hdr h2');
+  if(!hdr) return;
+  var existing=hdr.querySelector('.sec-subtitle');
+  if(text){
+    if(!existing){ existing=document.createElement('span'); existing.className='sec-subtitle'; hdr.appendChild(existing); }
+    existing.innerHTML=' &#8212; <span style="font-weight:500">'+text+'</span>';
+  } else {
+    if(existing) existing.remove();
+  }
+}
+
+function cardJump(secId, table, filter){
+  clearAllTableFilters();
+
+  if(table==='all' && filter==='Success'){
+    allFiltered=ALL_DATA.filter(function(d){return d.cat==='Success';});
+    allPage=1; renderAllPage(1);
+    setSecSubtitle('sec-audit','showing Successful only ('+allFiltered.length+' rows)');
+
+  } else if(table==='all' && filter==='AllFail'){
+    allFiltered=ALL_DATA.filter(function(d){return d.cat!=='Success';});
+    allPage=1; renderAllPage(1);
+    setSecSubtitle('sec-audit','showing Failed only ('+allFiltered.length+' rows)');
+
+  } else if(table==='comp' && filter==='taskfail'){
+    var shown=0, total=0;
+    document.querySelectorAll('#compTable tbody tr').forEach(function(r){
+      var show=r.getAttribute('data-taskfail')==='1';
+      r.style.display=show?'':'none';
+      if(show) shown++; total++;
+    });
+    setSecSubtitle('sec-issues','task-level errors only');
+    var cc=document.getElementById('comp-count');
+    if(cc) cc.textContent='Showing '+shown+' of '+total+' computers';
+
+  } else if(table==='fail' && filter){
+    failFiltered=FAIL_DATA.filter(function(d){return d.cat===filter;});
+    failPage=1; renderFailPage(1);
+    setSecSubtitle('sec-failures','filtered to '+filter+' ('+failFiltered.length+' rows)');
+
+  } else {
+    // Clear any subtitle from previous card jump
+    setSecSubtitle(secId, null);
+  }
+
+  jumpTo(secId);
+}
 
 // ── Section toggle ─────────────────────────────────────────────────────────
 function toggleSec(id){
@@ -1199,6 +1306,11 @@ function applyCompFilters(){
     if(hideU&&ip==='Unknown')show=false;
     r.style.display=show?'':'none';
   });
+  // Update count label
+  var visible=document.querySelectorAll('#compTable tbody tr:not([style*="display: none"])').length;
+  var total=document.querySelectorAll('#compTable tbody tr').length;
+  var cnt=document.getElementById('comp-count');
+  if(cnt) cnt.textContent='Showing '+visible+' of '+total+' computers';
 }
 
 // ── Compound filter for failures table ────────────────────────────────────
@@ -1209,19 +1321,34 @@ var allFiltered=[],  allPage=1;
 
 var catColors={Success:'#22c55e',NotActive:'#6b7280',PortNotOpen:'#f97316',
   AccessDenied:'#ef4444',StatusAccessDenied:'#ef4444',RPCError:'#a855f7',
-  RegistryError:'#ec4899',CollectorError:'#f59e0b',NonWindowsOS:'#0891b2',Other:'#64748b'};
+  RegistryError:'#ec4899',CollectorError:'#f59e0b',NonWindowsOS:'#0891b2',
+  Timeout:'#dc2626',NumericError:'#92400e',Other:'#64748b'};
 var methodColors={'TCP Port Scan':'#0369a1','SMB / NetWkstaUserEnum':'#0f766e',
   'SMB / SAMRPC':'#0f766e','RPC / LSARPC':'#7c3aed','WMI':'#b45309',
   'Remote Registry (RRP)':'#9a3412','LDAP':'#1d4ed8','Unknown':'#475569'};
 
 function esc(v){ return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-function rowHtml(d, multiFile){
+// Group colours — two alternating surface tones for computer groups
+var GROUP_COLORS=['var(--surface)','var(--bg)'];
+
+function rowHtml(d, multiFile, isFirstInGroup, groupIdx, groupSize){
   var catCol=d.catColor||(catColors[d.cat]||'#64748b');
   var methCol=methodColors[d.method]||'#475569';
   var srcCol=multiFile?'<td style="font-size:11px;color:var(--muted)">'+esc(d.src)+'</td>':'';
-  return '<tr data-comp="'+esc(d.cn)+'">'
-    +'<td class="cn-cell" title="'+esc(d.cn)+'">'+esc(d.cn)+'</td>'
+  var groupBg=GROUP_COLORS[groupIdx%2];
+  // Border-top only on first row of each group (visual separator)
+  var topBorder=isFirstInGroup?'border-top:2px solid var(--border);':'';
+  // Computer name cell: full name on first row, empty (indented continuation) on subsequent
+  var cnCell;
+  if(isFirstInGroup){
+    // Show name + row count badge if group has multiple rows
+    var badge=groupSize>1?'<span style="font-size:10px;color:var(--muted);margin-left:6px;background:var(--surface2);padding:1px 5px;border-radius:3px;">'+groupSize+' tasks</span>':'';
+    cnCell='<td class="cn-cell" title="'+esc(d.cn)+'" style="vertical-align:top">'+esc(d.cn)+badge+'</td>';
+  } else {
+    cnCell='<td style="border-left:3px solid var(--border);background:'+groupBg+'"></td>';
+  }
+  return '<tr data-comp="'+esc(d.cn)+'" style="background:'+groupBg+';'+topBorder+'">'+ cnCell
     +'<td style="font-size:12px">'+esc(d.task)+'</td>'
     +'<td><span class="badge" style="background:'+catCol+'">'+esc(d.cat)+'</span></td>'
     +'<td class="method-cell"><span class="badge" style="background:'+methCol+';font-size:10px">'+esc(d.method)+'</span></td>'
@@ -1252,7 +1379,28 @@ function renderPage(data, page, tbodyId, countId, paginId, multiFile){
   if(!data.length){
     tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted)">No results match the current filters.</td></tr>';
   } else {
-    var html=''; for(var i=start;i<end;i++) html+=rowHtml(data[i], multiFile);
+    // Pre-compute group sizes for the current page slice
+    var slice=data.slice(start,end);
+    // Calculate group index relative to full filtered dataset (so colour doesn't reset on each page)
+    var groupIdx=0, prevCn=start>0?data[start-1].cn:null;
+    // Count groups before this page to maintain colour continuity
+    if(start>0){
+      var seenGroups={};
+      for(var gi=0;gi<start;gi++){ if(!seenGroups[data[gi].cn]){seenGroups[data[gi].cn]=true;groupIdx++;} }
+    }
+    var html='';
+    var curCn=null, curGroupIdx=groupIdx;
+    // Build group size map for this page
+    var groupSizes={};
+    for(var si=0;si<slice.length;si++){
+      groupSizes[slice[si].cn]=(groupSizes[slice[si].cn]||0)+1;
+    }
+    for(var i=0;i<slice.length;i++){
+      var d=slice[i];
+      var isFirst=(d.cn!==curCn);
+      if(isFirst){ if(curCn!==null) curGroupIdx++; curCn=d.cn; }
+      html+=rowHtml(d, multiFile, isFirst, curGroupIdx, groupSizes[d.cn]);
+    }
     tbody.innerHTML=html;
   }
   // Update count
@@ -1312,6 +1460,17 @@ function clearAllTableFilters(){
   ['comp-hide-unknown','fail-hide-unknown'].forEach(function(id){
     var el=document.getElementById(id);if(el)el.checked=false;
   });
+  // Reset virtual pagination tables to show all data
+  if(typeof FAIL_DATA!=='undefined'){ failFiltered=FAIL_DATA.slice(); failPage=1; renderFailPage(1); }
+  if(typeof ALL_DATA!=='undefined'){  allFiltered=ALL_DATA.slice();  allPage=1;  renderAllPage(1);  }
+  // Remove any active filter subtitles from section headers
+  document.querySelectorAll('.sec-subtitle').forEach(function(el){el.remove();});
+  // Reset comp-count to show all
+  setTimeout(function(){
+    var rows=document.querySelectorAll('#compTable tbody tr');
+    var cc=document.getElementById('comp-count');
+    if(cc&&rows.length>0) cc.textContent='Showing '+rows.length+' of '+rows.length+' computers';
+  },50);
 }
 
 // ── Export visible rows to CSV ─────────────────────────────────────────────
@@ -1434,6 +1593,8 @@ var REM_DESCS={
   RPCError:      'RPC Endpoint Mapper (TCP 135) unreachable or Remote Registry stopped.',
   RegistryError: 'Remote Registry running but LSA key ACL denies read access.',
   CollectorError:'SharpHound exception. Review full error in audit log.',
+  Timeout:       'RPC/SMB call timed out. Heavy load, network latency, or a firewall rate-limiting specific RPC ports. Re-run during low-load window.',
+  NumericError:  'Raw Win32/NTSTATUS error code. Code 53=Network path not found, 50=Not supported, 1745=No more data. Check Task column for context.',
   NonWindowsOS:  'Linux/macOS detected — SharpHound skips SMB/RPC collection. No action needed unless the host should be Windows.',
   Other:         'Uncategorised error. Review raw status in audit log.'
 };
@@ -1574,6 +1735,32 @@ function clearSpotlight(){
   document.getElementById('spotlight-results').style.display='none';
   document.getElementById('sp-cards').innerHTML='';
   clearAllTableFilters();
+}
+
+// ── Back to top — always slightly visible, fully opaque after 200px scroll ─
+window.addEventListener('load',function(){
+  var bttBtn=document.getElementById('back-to-top');
+  if(!bttBtn) return;
+  // Show at low opacity always so user can find it; full opacity once scrolled
+  bttBtn.style.opacity='0.25';
+  bttBtn.style.pointerEvents='auto';
+  window.addEventListener('scroll',function(){
+    bttBtn.style.opacity=window.pageYOffset>200?'1':'0.25';
+    bttBtn.style.transform=window.pageYOffset>200?'scale(1)':'scale(0.92)';
+  },{passive:true});
+});
+
+// ── Export Not Active computers as CSV ───────────────────────────────────
+function exportNotActive(){
+  var el=document.getElementById('notactive-list');
+  if(!el) return;
+  var names=el.innerText.split('\n').map(function(n){return n.trim();}).filter(function(n){return n.length>0;});
+  var csv='Computer\r\n'+names.map(function(n){return '"'+n.replace(/"/g,'""')+'"';}).join('\r\n');
+  var blob=new Blob([csv],{type:'text/csv'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='BHE-NotActive-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
 }
 
 document.addEventListener('click',function(e){
