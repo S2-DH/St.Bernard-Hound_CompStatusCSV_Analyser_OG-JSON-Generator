@@ -407,17 +407,23 @@ $compJsonParts = foreach ($entry in $compMap.GetEnumerator()) {
     $jok   = @($jg | Where-Object { $_.Category -eq 'Success' }).Count
     $jfail = @($jg | Where-Object { $_.Category -ne 'Success' }).Count
     $jcats = (@($jg | Select-Object -ExpandProperty Category -Unique | Sort-Object)) -join ','
-    $jips  = (@($jg | Select-Object -ExpandProperty IPAddress -Unique | Where-Object { $_ -and $_ -ne 'Unknown' })) -join ','
+    $jips  = (@($jg | Select-Object -ExpandProperty IPAddress -Unique | Where-Object {
+        $_ -and $_ -ne 'Unknown' -and $_ -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$'
+    })) -join ','
     $jlinesByFile = $jg | Group-Object SourceFile | Sort-Object Name | ForEach-Object {
         $jnums = (@($_.Group | Select-Object -ExpandProperty LineNumber | Sort-Object -Unique)) -join ','
         "$($_.Name):$jnums"
     }
     $jlines = $jlinesByFile -join ' | '
     $jtl   = Get-TrafficLight $jg
-    $jn    = $entry.Name.Replace('\','\\').Replace('"','\"')
-    $jmethods   = (@($jg | Where-Object { $_.Category -ne 'Success' } | Select-Object -ExpandProperty Task -Unique | ForEach-Object { Get-CollectionMethod $_ } | Sort-Object -Unique)) -join ','
-    $jdatatypes = (@($jg | Where-Object { $_.Category -ne 'Success' } | Select-Object -ExpandProperty Task -Unique | ForEach-Object { Get-DataType $_ } | Sort-Object -Unique | Where-Object { $_ })) -join ','
-    '{"n":"' + $jn + '","ip":"' + $jips + '","ok":' + $jok + ',"fail":' + $jfail + ',"cats":"' + $jcats + '","lines":"' + $jlines + '","tl":"' + $jtl + '","methods":"' + $jmethods + '","datatypes":"' + $jdatatypes + '"}'
+    # Escape all string values for JSON safety
+    function JE-C([string]$t){ $t.Replace('\','\\').Replace('"','\"').Replace("`n",' ').Replace("`r",'').Replace("`t",' ') }
+    $jn    = JE-C $entry.Name
+    $jips2 = JE-C $jips
+    $jlines2 = JE-C $jlines
+    $jmethods   = ((@($jg | Where-Object { $_.Category -ne 'Success' } | Select-Object -ExpandProperty Task -Unique | ForEach-Object { Get-CollectionMethod $_ } | Sort-Object -Unique)) -join ',')
+    $jdatatypes = ((@($jg | Where-Object { $_.Category -ne 'Success' } | Select-Object -ExpandProperty Task -Unique | ForEach-Object { Get-DataType $_ } | Sort-Object -Unique | Where-Object { $_ })) -join ',')
+    '{"n":"' + $jn + '","ip":"' + $jips2 + '","ok":' + $jok + ',"fail":' + $jfail + ',"cats":"' + $jcats + '","lines":"' + $jlines2 + '","tl":"' + $jtl + '","methods":"' + $jmethods + '","datatypes":"' + $jdatatypes + '"}'
 }
 $computerJsonData = '[' + ($compJsonParts -join ',') + ']'
 
@@ -653,16 +659,17 @@ header h1{font-size:18px;font-weight:700;color:var(--accent);}
 #spotlight-results{
   position:absolute;
   top:calc(100% + 8px);
-  left:0;right:0;
+  left:0;
+  right:80px;
   background:#162032;
   border:1px solid var(--accent);
   border-radius:8px;
   padding:12px 14px;
-  display:none;
-  z-index:300;
+  z-index:500;
   max-height:70vh;
   overflow-y:auto;
   box-shadow:0 8px 32px rgba(0,0,0,.6);
+  min-width:400px;
 }
 .sp-cards{display:flex;flex-direction:column;gap:10px;}
 .sp-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 15px;width:100%;}
@@ -1029,7 +1036,7 @@ $multiCompTableHtml
   </div>
   <div id="sec-audit-body">
     <div class="filter-bar">
-      <input class="table-search" type="text" id="allSearch" placeholder="Filter all results..." oninput="filterTable('allTable','allSearch')">
+      <input class="table-search" type="text" id="allSearch" placeholder="Filter all results..." oninput="filterAllData()">
       <button class="filter-btn" onclick="exportTable('allTable','audit')">&#128196; Export CSV</button>
       <button class="filter-btn" onclick="printSection('sec-audit')">&#128424; Print / PDF</button>
       <button class="filter-btn" onclick="printFullReport()">&#128196; Export Full Report PDF</button>
@@ -1059,22 +1066,64 @@ var ALL_DATA=$allJsonData;
 var FAIL_SUBNETS=[$failSubnetJs];
 
 // ── Init on load ──────────────────────────────────────────────────────────
+// Single unified load listener — all init here
 window.addEventListener('load',function(){
+
+  // ── Spotlight panel: hide by default ────────────────────────────────────
+  var spPanel=document.getElementById('spotlight-results');
+  if(spPanel) spPanel.style.display='none';
+
+  // ── Virtual tables ───────────────────────────────────────────────────────
   failFiltered=FAIL_DATA.slice();
   allFiltered=ALL_DATA.slice();
   initFilters();
   buildRemPills();
   renderFailPage(1);
   renderAllPage(1);
-  // Set initial counts for static tables
+
+  // ── Issues table initial count ───────────────────────────────────────────
   var compRows=document.querySelectorAll('#compTable tbody tr').length;
   var cc=document.getElementById('comp-count');
   if(cc&&compRows>0) cc.textContent='Showing '+compRows+' of '+compRows+' computers';
+
+  // ── Spotlight computer index ─────────────────────────────────────────────
+  try{
+    COMP_DATA=$computerJsonData;
+    for(var i=0;i<COMP_DATA.length;i++){
+      if(COMP_DATA[i]&&COMP_DATA[i].n) compIdx[COMP_DATA[i].n.toUpperCase()]=COMP_DATA[i];
+    }
+    console.log('BHE Spotlight: indexed '+Object.keys(compIdx).length+' computers');
+  }catch(e){ console.error('BHE Spotlight: index error',e); }
+
+  // ── Spotlight input listeners ────────────────────────────────────────────
+  var inp=document.getElementById('spotlight-input');
+  if(inp){
+    inp.addEventListener('input',function(){
+      clearTimeout(spotTimer);
+      var v=inp.value.trim();
+      spotTimer=setTimeout(runSpotlight, v.length<=3?100:220);
+    });
+    inp.addEventListener('keydown',function(e){
+      if(e.key==='Escape')clearSpotlight();
+    });
+  }
+
+  // ── Back to top button ───────────────────────────────────────────────────
+  var bttBtn=document.getElementById('back-to-top');
+  if(bttBtn){
+    bttBtn.style.opacity='0.25';
+    bttBtn.style.pointerEvents='auto';
+    window.addEventListener('scroll',function(){
+      bttBtn.style.opacity=window.pageYOffset>200?'1':'0.25';
+      bttBtn.style.transform=window.pageYOffset>200?'scale(1)':'scale(0.92)';
+    },{passive:true});
+  }
+
 });
 
 // ── Chart ──────────────────────────────────────────────────────────────────
 var chartLabels=[$chartLabels],chartValues=[$chartValues],chartColors=[$chartColors];
-new Chart(document.getElementById('donut'),{
+try{ new Chart(document.getElementById('donut'),{
   type:'doughnut',
   data:{labels:chartLabels,datasets:[{data:chartValues,backgroundColor:chartColors,borderWidth:2,borderColor:'#1e293b'}]},
   options:{cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{
@@ -1084,8 +1133,9 @@ new Chart(document.getElementById('donut'),{
     }
   }}}}
 });
+}catch(e){console.warn('Chart.js not available',e);}
 var leg=document.getElementById('legend');
-chartLabels.forEach(function(l,i){
+if(leg) chartLabels.forEach(function(l,i){
   var d=document.createElement('div');d.className='chart-legend-item';
   d.innerHTML='<div class="chart-legend-dot" style="background:'+chartColors[i]+'"></div><span><b>'+chartValues[i]+'</b> -- '+l+'</span>';
   leg.appendChild(d);
@@ -1664,36 +1714,66 @@ function buildRemPills(){
 }
 
 // ── Spotlight computer search ──────────────────────────────────────────────
-var COMP_DATA=$computerJsonData;
+var COMP_DATA=[];
 var compIdx={};
-for(var i=0;i<COMP_DATA.length;i++){compIdx[COMP_DATA[i].n.toUpperCase()]=COMP_DATA[i];}
-
 var spotTimer;
-document.getElementById('spotlight-input').addEventListener('input',function(){
-  clearTimeout(spotTimer);spotTimer=setTimeout(runSpotlight,220);
-});
-document.getElementById('spotlight-input').addEventListener('keydown',function(e){
-  if(e.key==='Escape')clearSpotlight();
-});
+
+
 
 function runSpotlight(){
   var raw=document.getElementById('spotlight-input').value;
-  var terms=raw.split(',').map(function(s){return s.trim().toUpperCase();}).filter(function(s){return s.length>0;});
   var panel=document.getElementById('spotlight-results');
   var cards=document.getElementById('sp-cards');
-  if(terms.length===0){panel.style.display='none';cards.innerHTML='';return;}
-  var matches=[],notFound=[],seen={};
+
+  var trimmed=raw.trim();
+  if(trimmed.length===0){
+    panel.style.display='none';
+    cards.innerHTML='';
+    return;
+  }
+
+  // Split by comma for multi-search; single continuous string treated as one term
+  // Minimum 1 character to start matching
+  var terms=trimmed.split(',').map(function(s){return s.trim().toUpperCase();}).filter(function(s){return s.length>0;});
+
   var keys=Object.keys(compIdx);
+  var seen={};
+  var matches=[];
+  var notFound=[];
+
   terms.forEach(function(term){
-    if(compIdx[term]){if(!seen[term]){matches.push(compIdx[term]);seen[term]=1;} return;}
-    var found=null;
-    for(var k=0;k<keys.length;k++){if(keys[k].indexOf(term)>=0){found=compIdx[keys[k]];break;}}
-    if(found){if(!seen[found.n]){matches.push(found);seen[found.n]=1;}}
-    else notFound.push(term);
+    var termMatches=[];
+    // Exact match first
+    if(compIdx[term]&&!seen[term]){
+      seen[term]=1;
+      termMatches.push({d:compIdx[term],score:0});
+    }
+    // All partial/contains matches — sorted by position of match (earlier = better)
+    keys.forEach(function(k){
+      if(seen[k]) return;
+      var pos=k.indexOf(term);
+      if(pos>=0){
+        seen[k]=1;
+        termMatches.push({d:compIdx[k],score:pos+1});
+      }
+    });
+    // Sort: exact(0) first, then by match position, then alphabetically
+    termMatches.sort(function(a,b){
+      if(a.score!==b.score) return a.score-b.score;
+      return a.d.n.localeCompare(b.d.n);
+    });
+    if(termMatches.length===0) notFound.push(term);
+    termMatches.forEach(function(m){matches.push(m.d);});
   });
+
   var html='';
-  matches.forEach(function(m){html+=renderSpCard(m);});
-  if(notFound.length>0)html+='<div class="sp-notfound">Not found: '+notFound.join(', ')+'</div>';
+  if(matches.length>0){
+    if(matches.length>1) html='<div style="font-size:11px;color:var(--muted);margin-bottom:8px">'+matches.length+' computers found</div>';
+    matches.forEach(function(m){html+=renderSpCard(m);});
+  }
+  if(notFound.length>0) html+='<div class="sp-notfound">Not found: '+notFound.join(', ')+'</div>';
+  if(!html) html='<div class="sp-notfound">No matches for: '+esc(trimmed)+'</div>';
+
   cards.innerHTML=html;
   panel.style.display='block';
 }
@@ -1727,28 +1807,25 @@ function renderSpCard(c){
 }
 
 function spJumpIssues(name){jumpTo('sec-issues');var inp=document.getElementById('compSearch');inp.value=name;applyCompFilters();return false;}
-function spJumpAudit(name){jumpTo('sec-audit');var inp=document.getElementById('allSearch');inp.value=name;filterTable('allTable','allSearch');return false;}
+function spJumpAudit(name){
+  jumpTo('sec-audit');
+  var inp=document.getElementById('allSearch');
+  if(inp){ inp.value=name; filterAllData(); }
+  return false;
+}
 function spJumpFailures(name){jumpTo('sec-failures');var inp=document.getElementById('failSearch');inp.value=name;applyFailFilters();return false;}
 
 function clearSpotlight(){
   document.getElementById('spotlight-input').value='';
-  document.getElementById('spotlight-results').style.display='none';
+  var p=document.getElementById('spotlight-results');
+  p.style.display='none';
   document.getElementById('sp-cards').innerHTML='';
-  clearAllTableFilters();
+  // Note: deliberately does NOT reset table filters — that is a separate user action.
+  // Clicking ✕ just dismisses the spotlight panel; filters set by spotlight links persist.
 }
 
 // ── Back to top — always slightly visible, fully opaque after 200px scroll ─
-window.addEventListener('load',function(){
-  var bttBtn=document.getElementById('back-to-top');
-  if(!bttBtn) return;
-  // Show at low opacity always so user can find it; full opacity once scrolled
-  bttBtn.style.opacity='0.25';
-  bttBtn.style.pointerEvents='auto';
-  window.addEventListener('scroll',function(){
-    bttBtn.style.opacity=window.pageYOffset>200?'1':'0.25';
-    bttBtn.style.transform=window.pageYOffset>200?'scale(1)':'scale(0.92)';
-  },{passive:true});
-});
+
 
 // ── Export Not Active computers as CSV ───────────────────────────────────
 function exportNotActive(){
@@ -1765,7 +1842,7 @@ function exportNotActive(){
 
 document.addEventListener('click',function(e){
   var wrap=document.getElementById('spotlight-wrap');
-  if(wrap&&!wrap.contains(e.target))document.getElementById('spotlight-results').style.display='none';
+  if(wrap&&!wrap.contains(e.target)){var p=document.getElementById('spotlight-results');if(p)p.style.display='none';}
 });
 </script>
 </body>
