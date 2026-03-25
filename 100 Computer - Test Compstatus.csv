@@ -319,9 +319,9 @@ KAISEL-SRV01.SOLO-LEVELING.COM, GetMembersInAlias - RDS Remote Access Servers, S
 KAISEL-SRV01.SOLO-LEVELING.COM, GetMembersInAlias - Access Control Assistance Operators, Success, 10.0.1.14, S-1-5-21-2049971632-1873952065-749528318-4010
 KAISEL-SRV01.SOLO-LEVELING.COM, GetMembersInAlias - Guests, Success, 10.0.1.14, S-1-5-21-2049971632-1873952065-749528318-4010
 KAISEL-SRV01.SOLO-LEVELING.COM, GetMembersInAlias - Users, Success, 10.0.1.14, S-1-5-21-2049971632-1873952065-749528318-4010
-SUNGAH-WKS01.SOLO-LEVELING.COM, ComputerAvailability, NotActive, 172.16.3.24, S-1-5-21-2049971632-1873952065-749528318-4011
-HEEJIN-LPT01.SOLO-LEVELING.COM, ComputerAvailability, NotActive, 172.16.2.11, S-1-5-21-2049971632-1873952065-749528318-4012
-SANGMIN-VIR01.SOLO-LEVELING.COM, ComputerAvailability, NotActive, 172.16.5.17, S-1-5-21-2049971632-1873952065-749528318-4013
+SUNGAH-WKS01.SOLO-LEVELING.COM, ComputerAvailability, NotActive, Unknown, S-1-5-21-2049971632-1873952065-749528318-4011
+HEEJIN-LPT01.SOLO-LEVELING.COM, ComputerAvailability, NotActive, Unknown, S-1-5-21-2049971632-1873952065-749528318-4012
+SANGMIN-VIR01.SOLO-LEVELING.COM, ComputerAvailability, NotActive, Unknown, S-1-5-21-2049971632-1873952065-749528318-4013
 YOONSUN-SFC01.SOLO-LEVELING.COM, ComputerAvailability, NotActive, 10.0.1.23, S-1-5-21-2049971632-1873952065-749528318-4014
 JOOSUK-WKS01.SOLO-LEVELING.COM, ComputerAvailability, NotActive, 172.16.1.22, S-1-5-21-2049971632-1873952065-749528318-4015
 KIHOON-LPT01.SOLO-LEVELING.COM, ComputerAvailability, NotActive, 172.16.2.12, S-1-5-21-2049971632-1873952065-749528318-4016
@@ -541,7 +541,7 @@ GEORGER-DBAS01.SOLO-LEVELING.COM, ReadComputerProperties, Success, 10.0.5.50, S-
 GEORGER-DBAS01.SOLO-LEVELING.COM, ReadUserProperties, Success, 10.0.5.50, S-1-5-21-2049971632-1873952065-749528318-4064
 GEORGER-DBAS01.SOLO-LEVELING.COM, LSAEnumerateAccountsWithUserRight, Success, 10.0.5.50, S-1-5-21-2049971632-1873952065-749528318-4064
 GEORGER-DBAS01.SOLO-LEVELING.COM, ReadRegistrySettings - DotNetWmiRegistryStrategy, Collector failed: The RPC server is unavailable.., 10.0.5.50, S-1-5-21-2049971632-1873952065-749528318-4064
-GEORGER-DBAS01.SOLO-LEVELING.COM, ReadRegistrySettings - RemoteRegistryStrategy, Collector failed: Failed to enumerate registry on GEORGER-DBAS01.SOLO-LEVELING.COM: SharpHoundRPC.Registry.RemoteRegistryException: Failed to enumerate registry key SYSTEM\\CurrentControlSet\\Control\\Lsa\\MSV1_0 ---> System.Security.SecurityException: Requested registry access is not allowed.   at System.ThrowHelper.ThrowSecurityException(ExceptionResource resource)   at Microsoft.Win32.RegistryKey.OpenSubKey(String name, Boolean writable)   at SharpHoundRPC.Registry.RemoteRegistryStrategy.EnumerateKey(RegistryKey baseKey, String keyPath, RegistryQuery query) in D:\\a\\SharpHoundCommon\\SharpHoundCommon\\src\\SharpHoundRPC\\Registry\\RemoteRegistryStrategy.cs:line 88   --- End of inner exception stack trace ---   at SharpHoundRPC.Registry.RemoteRegistryStrategy.EnumerateKey(RegistryKey baseKey, String keyPath, RegistryQuery query) in D:\\a\\SharpHoundCommon\\SharpHoundCommon\\src\\SharpHoundRPC\\Registry\\RemoteRegistryStrategy.cs:line 121, 10.0.5.50, S-1-5-21-2049971632-1873952065-749528318-4064
+GEORGER-DBAS01.SOLO-LEVELING.COM, ReadRegistrySettings - RemoteRegistryStrategy, Collector failed: Failed to enumerate registry on GEORGER-DBAS01.SOLO-LEVELING.COM: SharpHoundRPC.Registry.RemoteRegistryException: Failed to enumerate registry key SYSTEM\\CurrentControlSet\\Control\\Lsa\\MSV1_0 ---> System.Security.SecurityException: Requested registry access is not allowed.   at System.ThrowHelper.ThrowSecurityException(ExceptionResource resource)   at Microsoft.Win32.RegistryKey.OpenSubKey(String name, Boolean writable)   at SharpHoundRPC.Registry.RemoteRegistryStrategy.EnumerateKey(RegistryKey baseKey, String keyPath
 GEORGER-DBAS01.SOLO-LEVELING.COM, GetMembersInAlias - Administrators, Success, 10.0.5.50, S-1-5-21-2049971632-1873952065-749528318-4064
 GEORGER-DBAS01.SOLO-LEVELING.COM, GetMembersInAlias - Remote Desktop Users, Success, 10.0.5.50, S-1-5-21-2049971632-1873952065-749528318-4064
 GEORGER-DBAS01.SOLO-LEVELING.COM, GetMembersInAlias - Remote Management Users, Success, 10.0.5.50, S-1-5-21-2049971632-1873952065-749528318-4064
@@ -552,7 +552,7 @@ SELNER-DBAS01.SOLO-LEVELING.COM, ReadComputerProperties, Success, 10.0.5.51, S-1
 SELNER-DBAS01.SOLO-LEVELING.COM, ReadUserProperties, Success, 10.0.5.51, S-1-5-21-2049971632-1873952065-749528318-4065
 SELNER-DBAS01.SOLO-LEVELING.COM, LSAEnumerateAccountsWithUserRight, Success, 10.0.5.51, S-1-5-21-2049971632-1873952065-749528318-4065
 SELNER-DBAS01.SOLO-LEVELING.COM, ReadRegistrySettings - DotNetWmiRegistryStrategy, Collector failed: The RPC server is unavailable.., 10.0.5.51, S-1-5-21-2049971632-1873952065-749528318-4065
-SELNER-DBAS01.SOLO-LEVELING.COM, ReadRegistrySettings - RemoteRegistryStrategy, Collector failed: Failed to enumerate registry on SELNER-DBAS01.SOLO-LEVELING.COM: SharpHoundRPC.Registry.RemoteRegistryException: Failed to enumerate registry key SYSTEM\\CurrentControlSet\\Control\\Lsa\\MSV1_0 ---> System.Security.SecurityException: Requested registry access is not allowed.   at System.ThrowHelper.ThrowSecurityException(ExceptionResource resource)   at Microsoft.Win32.RegistryKey.OpenSubKey(String name, Boolean writable)   at SharpHoundRPC.Registry.RemoteRegistryStrategy.EnumerateKey(RegistryKey baseKey, String keyPath, RegistryQuery query) in D:\\a\\SharpHoundCommon\\SharpHoundCommon\\src\\SharpHoundRPC\\Registry\\RemoteRegistryStrategy.cs:line 88   --- End of inner exception stack trace ---   at SharpHoundRPC.Registry.RemoteRegistryStrategy.EnumerateKey(RegistryKey baseKey, String keyPath, RegistryQuery query) in D:\\a\\SharpHoundCommon\\SharpHoundCommon\\src\\SharpHoundRPC\\Registry\\RemoteRegistryStrategy.cs:line 121, 10.0.5.51, S-1-5-21-2049971632-1873952065-749528318-4065
+SELNER-DBAS01.SOLO-LEVELING.COM, ReadRegistrySettings - RemoteRegistryStrategy, Collector failed: Failed to enumerate registry on SELNER-DBAS01.SOLO-LEVELING.COM: SharpHoundRPC.Registry.RemoteRegistryException: Failed to enumerate registry key SYSTEM\\CurrentControlSet\\Control\\Lsa\\MSV1_0 ---> System.Security.SecurityException: Requested registry access is not allowed.   at System.ThrowHelper.ThrowSecurityException(ExceptionResource resource)   at Microsoft.Win32.RegistryKey.OpenSubKey(String name, Boolean writable)   at SharpHoundRPC.Registry.RemoteRegistryStrategy.EnumerateKey(RegistryKey baseKey, String keyPath
 SELNER-DBAS01.SOLO-LEVELING.COM, GetMembersInAlias - Administrators, Success, 10.0.5.51, S-1-5-21-2049971632-1873952065-749528318-4065
 SELNER-DBAS01.SOLO-LEVELING.COM, GetMembersInAlias - Remote Desktop Users, Success, 10.0.5.51, S-1-5-21-2049971632-1873952065-749528318-4065
 SELNER-DBAS01.SOLO-LEVELING.COM, GetMembersInAlias - Remote Management Users, Success, 10.0.5.51, S-1-5-21-2049971632-1873952065-749528318-4065
@@ -648,3 +648,41 @@ DEADMONARCHWOO-WEBS01.SOLO-LEVELING.COM, NetWkstaUserEnum, Success, 10.0.99.1, S
 DEADMONARCHWOO-WEBS01.SOLO-LEVELING.COM, LSAEnumerateAccountsWithUserRight, StatusAccessDenied, 10.0.99.1, S-1-5-21-2049971632-1873952065-749528318-5010
 DEADMONARCHWOO-WEBS01.SOLO-LEVELING.COM, GetMembersInAlias - Administrators, Success, 10.0.99.1, S-1-5-21-2049971632-1873952065-749528318-5010
 DEADMONARCHWOO-WEBS01.SOLO-LEVELING.COM, ReadRegistrySettings - DotNetWmiRegistryStrategy, Success, 10.0.99.1, S-1-5-21-2049971632-1873952065-749528318-5010
+BAEKHO-LPT02.SOLO-LEVELING.COM, ComputerAvailability, PortNotOpen, Unknown, S-1-5-21-2049971632-1873952065-749528318-7001
+QUEREHSHA-WKS02.SOLO-LEVELING.COM, ComputerAvailability, PortNotOpen, Unknown, S-1-5-21-2049971632-1873952065-749528318-7002
+LINUX-WEBSVR01.SOLO-LEVELING.COM, ComputerAvailability, NonWindowsOS, 10.10.1.50, S-1-5-21-2049971632-1873952065-749528318-7010
+LINUX-WEBSVR02.SOLO-LEVELING.COM, ComputerAvailability, NonWindowsOS, 10.10.1.51, S-1-5-21-2049971632-1873952065-749528318-7011
+LINUX-APPSVR01.SOLO-LEVELING.COM, ComputerAvailability, NonWindowsOS, 10.10.2.50, S-1-5-21-2049971632-1873952065-749528318-7012
+MAC-WKSTN01.SOLO-LEVELING.COM, ComputerAvailability, NonWindowsOS, 172.16.1.50, S-1-5-21-2049971632-1873952065-749528318-7013
+LINUX-UNKNOWN01.SOLO-LEVELING.COM, ComputerAvailability, NonWindowsOS, Unknown, S-1-5-21-2049971632-1873952065-749528318-7014
+PORTSKIP-JINAH-SRV01.SOLO-LEVELING.COM, ComputerAvailability, PortScanSkipped, 192.168.2.10, S-1-5-21-2049971632-1873952065-749528318-6001
+PORTSKIP-JINAH-SRV01.SOLO-LEVELING.COM, NetWkstaUserEnum, Success, 192.168.2.10, S-1-5-21-2049971632-1873952065-749528318-6001
+PORTSKIP-JINAH-SRV01.SOLO-LEVELING.COM, ReadComputerProperties, Success, 192.168.2.10, S-1-5-21-2049971632-1873952065-749528318-6001
+PORTSKIP-JINAH-SRV01.SOLO-LEVELING.COM, ReadUserProperties, Success, 192.168.2.10, S-1-5-21-2049971632-1873952065-749528318-6001
+PORTSKIP-JINAH-SRV01.SOLO-LEVELING.COM, LSAEnumerateAccountsWithUserRight, Success, 192.168.2.10, S-1-5-21-2049971632-1873952065-749528318-6001
+PORTSKIP-JINAH-SRV01.SOLO-LEVELING.COM, ReadRegistrySettings - DotNetWmiRegistryStrategy, Success, 192.168.2.10, S-1-5-21-2049971632-1873952065-749528318-6001
+PORTSKIP-JINAH-SRV01.SOLO-LEVELING.COM, ReadRegistrySettings - RemoteRegistryStrategy, Success, 192.168.2.10, S-1-5-21-2049971632-1873952065-749528318-6001
+PORTSKIP-JINAH-SRV01.SOLO-LEVELING.COM, GetMembersInAlias - Administrators, Success, 192.168.2.10, S-1-5-21-2049971632-1873952065-749528318-6001
+PORTSKIP-JINAH-SRV01.SOLO-LEVELING.COM, GetMembersInAlias - Remote Desktop Users, Success, 192.168.2.10, S-1-5-21-2049971632-1873952065-749528318-6001
+PORTSKIP-SANGHO-WKS01.SOLO-LEVELING.COM, ComputerAvailability, PortScanSkipped, 192.168.2.11, S-1-5-21-2049971632-1873952065-749528318-6002
+PORTSKIP-SANGHO-WKS01.SOLO-LEVELING.COM, NetWkstaUserEnum, Success, 192.168.2.11, S-1-5-21-2049971632-1873952065-749528318-6002
+PORTSKIP-SANGHO-WKS01.SOLO-LEVELING.COM, ReadComputerProperties, Success, 192.168.2.11, S-1-5-21-2049971632-1873952065-749528318-6002
+PORTSKIP-SANGHO-WKS01.SOLO-LEVELING.COM, LSAEnumerateAccountsWithUserRight, StatusAccessDenied, 192.168.2.11, S-1-5-21-2049971632-1873952065-749528318-6002
+PORTSKIP-SANGHO-WKS01.SOLO-LEVELING.COM, ReadRegistrySettings - DotNetWmiRegistryStrategy, Success, 192.168.2.11, S-1-5-21-2049971632-1873952065-749528318-6002
+PORTSKIP-SANGHO-WKS01.SOLO-LEVELING.COM, GetMembersInAlias - Administrators, Success, 192.168.2.11, S-1-5-21-2049971632-1873952065-749528318-6002
+PORTSKIP-MIRAE-APPS01.SOLO-LEVELING.COM, ComputerAvailability, PortScanSkipped, 192.168.2.12, S-1-5-21-2049971632-1873952065-749528318-6003
+PORTSKIP-MIRAE-APPS01.SOLO-LEVELING.COM, NetWkstaUserEnum, Success, 192.168.2.12, S-1-5-21-2049971632-1873952065-749528318-6003
+PORTSKIP-MIRAE-APPS01.SOLO-LEVELING.COM, ReadRegistrySettings - DotNetWmiRegistryStrategy, Success, 192.168.2.12, S-1-5-21-2049971632-1873952065-749528318-6003
+PORTSKIP-MIRAE-APPS01.SOLO-LEVELING.COM, ReadRegistrySettings - RemoteRegistryStrategy, Collector failed: The RPC server is unavailable.., 192.168.2.12, S-1-5-21-2049971632-1873952065-749528318-6003
+PORTSKIP-MIRAE-APPS01.SOLO-LEVELING.COM, LSAEnumerateAccountsWithUserRight, Success, 192.168.2.12, S-1-5-21-2049971632-1873952065-749528318-6003
+PORTSKIP-MIRAE-APPS01.SOLO-LEVELING.COM, GetMembersInAlias - Administrators, Success, 192.168.2.12, S-1-5-21-2049971632-1873952065-749528318-6003
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, ComputerAvailability, PortScanSkipped, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, NetWkstaUserEnum, Success, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, ReadComputerProperties, Success, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, ReadUserProperties, Success, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, LSAEnumerateAccountsWithUserRight, Success, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, ReadRegistrySettings - DotNetWmiRegistryStrategy, Success, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, ReadRegistrySettings - RemoteRegistryStrategy, Success, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, GetMembersInAlias - Administrators, Success, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, GetMembersInAlias - Remote Desktop Users, Success, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
+PORTSKIP-YOONA-DC01.SOLO-LEVELING.COM, GetMembersInAlias - Server Operators, Success, 192.168.2.13, S-1-5-21-2049971632-1873952065-749528318-6004
