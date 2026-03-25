@@ -44,7 +44,7 @@
     .\Analyze-BHECompStatus.ps1 -NoMenu
 
 .NOTES
-    Author  : SDH / SpecterOps BHE TAM Toolkit
+    Author  : SDH / SpecterOps TAM Toolkit
     Version : 2.0
     Requires: PowerShell 5.1+
     Context : BloodHound Enterprise - session and local group collection diagnostics
@@ -249,7 +249,7 @@ function Import-CompStatusCsv([string]$Path) {
 Write-Host ''
 Write-Host '  +------------------------------------------------------+' -ForegroundColor Cyan
 Write-Host '  |  BloodHound Enterprise - CompStatus Analyser  v2.0  |' -ForegroundColor Cyan
-Write-Host '  |  SpecterOps BHE TAM Toolkit                             |' -ForegroundColor Cyan
+Write-Host '  |  SpecterOps TAM Toolkit                             |' -ForegroundColor Cyan
 Write-Host '  +------------------------------------------------------+' -ForegroundColor Cyan
 Write-Host ''
 
@@ -484,18 +484,18 @@ $compSummaryRows = foreach ($entry in $problemComputers) {
 }
 $compSrcHeader = if ($isMultiFile) { '<th>Source File(s)</th>' } else { '' }
 
-# Failure rows
-$failRowIdx = 0
-$failTableRows = foreach ($r in ($failRows | Sort-Object Category, ComputerName)) {
+# Failure rows — JSON array for virtual pagination (avoids rendering 50k+ DOM nodes)
+function JE-F([string]$t){ $t.Replace('\','\\').Replace('"','\"').Replace("`n",' ').Replace("`r",'').Replace("'","\'") }
+$failJsonParts = foreach ($r in ($failRows | Sort-Object Category, ComputerName)) {
     $statusShort = $r.Status.Substring(0, [Math]::Min($r.Status.Length, 300))
-    $srcCol      = if ($isMultiFile) { "<td class='status-cell'>$(HE $r.SourceFile)</td>" } else { '' }
     $fcn         = Get-CanonicalName $r.ComputerName
     $fMethod     = Get-CollectionMethod $r.Task
     $fDataType   = Get-DataType $r.Task
-    $fMethBadge  = Get-MethodBadge $fMethod
-    "<tr id='fr-$failRowIdx' data-comp='$(HE $fcn)'><td class='cn-cell' title='$(HE $fcn)'>$(HE $fcn)</td><td>$(HE $r.Task)</td><td>$(Get-Badge $r.Category)</td><td>$fMethBadge</td><td style='font-size:11px;color:var(--muted)'>$(HE $fDataType)</td><td class='status-cell'>$(HE $statusShort)</td><td>$(HE $r.IPAddress)</td><td style='font-family:Consolas,monospace;font-size:11px;color:var(--muted)'><span style='color:#64748b'>$(HE $r.SourceFile)</span><br>L$($r.LineNumber)</td>$srcCol</tr>"
-    $failRowIdx++
+    $srcVal      = if ($isMultiFile) { JE-F $r.SourceFile } else { '' }
+    '{"cn":"' + (JE-F $fcn) + '","task":"' + (JE-F $r.Task) + '","cat":"' + $r.Category + '","catColor":"' + $(if ($BadgeColour.ContainsKey($r.Category)){$BadgeColour[$r.Category]}else{'#64748b'}) + '","method":"' + (JE-F $fMethod) + '","dtype":"' + (JE-F $fDataType) + '","status":"' + (JE-F $statusShort) + '","ip":"' + (JE-F $r.IPAddress) + '","src":"' + $srcVal + '","line":' + $r.LineNumber + '}'
 }
+$failJsonData  = '[' + ($failJsonParts -join ',') + ']'
+$failTableRows = ''
 $failSrcHeader = if ($isMultiFile) { '<th>Source File</th>' } else { '' }
 
 # Remediation cards
@@ -561,19 +561,18 @@ if ($isMultiFile) {
     $multiCompTableHtml = "<section id='sec-crossrun'><div class='sec-hdr' onclick=""toggleSec('sec-crossrun')""><h2>&#128201; ALL COMPUTERS - CROSS-RUN STATUS ($uniqueComputers unique)</h2><span class='collapse-btn' id='sec-crossrun-btn'>&#9660;</span></div><div id='sec-crossrun-body'><p style='color:var(--muted);font-size:13px;margin-bottom:12px'>Each computer listed once. Green = OK in all files. Orange = mixed results. Red = failed in every file it appeared in.</p><input class='table-search' type='text' id='mcSearch' placeholder='Filter computers...' oninput=""filterTable('mcTable','mcSearch')""><div class='table-wrap'><table id='mcTable'><thead><tr><th>Computer</th><th>IP Address</th><th>Status</th><th>Files Containing Errors</th></tr></thead><tbody>$($mcRows -join '')</tbody></table></div></div></section>"
 }
 
-# Full audit log
-$allRowIdx = 0
-$allTableRows = foreach ($r in ($allRows | Sort-Object ComputerName, Task)) {
-    $rowClass    = if ($r.Category -eq 'Success') { 'row-ok' } else { 'row-fail' }
-    $statusShort = $r.Status.Substring(0, [Math]::Min($r.Status.Length, 300))
-    $srcCol      = if ($isMultiFile) { "<td class='status-cell'>$(HE $r.SourceFile)</td>" } else { '' }
+# Full audit log — JSON array for virtual pagination
+function JE-A([string]$t){ $t.Replace('\','\\').Replace('"','\"').Replace("`n",' ').Replace("`r",'').Replace("'","\'") }
+$allJsonParts = foreach ($r in ($allRows | Sort-Object ComputerName, Task)) {
     $acn         = Get-CanonicalName $r.ComputerName
     $aMethod     = Get-CollectionMethod $r.Task
     $aDataType   = Get-DataType $r.Task
-    $aMethBadge  = Get-MethodBadge $aMethod
-    "<tr id='ar-$allRowIdx' class='$rowClass' data-comp='$(HE $acn)'><td class='cn-cell' title='$(HE $acn)'>$(HE $acn)</td><td>$(HE $r.Task)</td><td>$(Get-Badge $r.Category)</td><td>$aMethBadge</td><td style='font-size:11px;color:var(--muted)'>$(HE $aDataType)</td><td class='status-cell'>$(HE $statusShort)</td><td>$(HE $r.IPAddress)</td><td style='font-family:Consolas,monospace;font-size:11px;color:var(--muted)'><span style='color:#64748b'>$(HE $r.SourceFile)</span><br>L$($r.LineNumber)</td>$srcCol</tr>"
-    $allRowIdx++
+    $statusShort = $r.Status.Substring(0, [Math]::Min($r.Status.Length, 300))
+    $srcVal      = if ($isMultiFile) { JE-A $r.SourceFile } else { '' }
+    '{"cn":"' + (JE-A $acn) + '","task":"' + (JE-A $r.Task) + '","cat":"' + $r.Category + '","catColor":"' + $(if ($BadgeColour.ContainsKey($r.Category)){$BadgeColour[$r.Category]}else{'#64748b'}) + '","method":"' + (JE-A $aMethod) + '","dtype":"' + (JE-A $aDataType) + '","status":"' + (JE-A $statusShort) + '","ip":"' + (JE-A $r.IPAddress) + '","src":"' + $srcVal + '","line":' + $r.LineNumber + '}'
 }
+$allJsonData  = '[' + ($allJsonParts -join ',') + ']'
+$allTableRows = ''
 $allSrcHeader = if ($isMultiFile) { '<th>Source File</th>' } else { '' }
 
 # Chart
@@ -741,12 +740,20 @@ tbody td{padding:8px 13px;vertical-align:middle;}
 .highlight-row td{animation:rowFlash 1.8s ease-out;}
 
 footer{text-align:center;padding:22px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:36px;}
+.pg-bar{display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-top:8px;}
+.pg-btn{background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:4px 9px;font-size:12px;cursor:pointer;min-width:32px;}
+.pg-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.pg-btn:disabled{opacity:.35;cursor:default;}
+.pg-active{background:var(--accent)!important;color:#000!important;border-color:var(--accent)!important;font-weight:700;}
+.pg-ellipsis{color:var(--muted);padding:0 4px;font-size:12px;}
+.row-count{font-size:12px;color:var(--muted);margin-left:auto;}
 
 /* ── Filter bar ── */
 .filter-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;}
 .filter-select{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:12px;cursor:pointer;min-width:140px;}
 .filter-select:focus{outline:none;border-color:var(--accent);}
 .filter-toggle{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);cursor:pointer;padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;user-select:none;}
+.filter-toggle:has(input:disabled){opacity:.4;cursor:not-allowed;}
 .filter-toggle input{accent-color:var(--accent);cursor:pointer;}
 .filter-btn{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--accent);padding:6px 12px;font-size:12px;cursor:pointer;white-space:nowrap;}
 .filter-btn:hover{border-color:var(--accent);background:var(--surface);}
@@ -892,6 +899,7 @@ $multiCompTableHtml
       </select>
       <select class="filter-select" id="comp-subnet-filter" onchange="applyCompFilters()" title="Filter by subnet">
         <option value="">All Subnets</option>
+        <option value="__UNKNOWN__">Unknown IP</option>
       </select>
       <label class="filter-toggle" title="Hide/show computers with Unknown IP">
         <input type="checkbox" id="comp-hide-unknown" onchange="applyCompFilters()"> Hide Unknown IP
@@ -925,6 +933,7 @@ $multiCompTableHtml
       </select>
       <select class="filter-select" id="fail-subnet-filter" onchange="applyFailFilters()" title="Filter by subnet">
         <option value="">All Subnets</option>
+        <option value="__UNKNOWN__">Unknown IP</option>
       </select>
       <label class="filter-toggle">
         <input type="checkbox" id="fail-hide-unknown" onchange="applyFailFilters()"> Hide Unknown IP
@@ -932,12 +941,16 @@ $multiCompTableHtml
       <button class="filter-btn" onclick="exportTable('failTable','failures')">&#128196; Export CSV</button>
       <button class="filter-btn" onclick="printSection('sec-failures')">&#128424; Print / PDF</button>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <span id="fail-count" class="row-count"></span>
+    </div>
     <div class="table-wrap">
     <table id="failTable">
     <thead><tr><th onclick="sortTable('failTable',0,this)" class="sortable">Computer <span class="sort-icon">&#8597;</span></th><th onclick="sortTable('failTable',1,this)" class="sortable">Task <span class="sort-icon">&#8597;</span></th><th onclick="sortTable('failTable',2,this)" class="sortable">Category <span class="sort-icon">&#8597;</span></th><th onclick="sortTable('failTable',3,this)" class="sortable">Method <span class="sort-icon">&#8597;</span></th><th>Data Collected</th><th onclick="sortTable('failTable',5,this)" class="sortable">Status Detail <span class="sort-icon">&#8597;</span></th><th onclick="sortTable('failTable',6,this)" class="sortable">IP <span class="sort-icon">&#8597;</span></th><th>File / Line</th>$failSrcHeader</tr></thead>
-    <tbody>$($failTableRows -join '')</tbody>
+    <tbody id='failTbody'></tbody>
     </table>
     </div>
+    <div class="pg-bar" id="fail-pagin"></div>
   </div>
 </section>
 
@@ -976,44 +989,32 @@ $multiCompTableHtml
       <button class="filter-btn" onclick="printSection('sec-audit')">&#128424; Print / PDF</button>
       <button class="filter-btn" onclick="printFullReport()">&#128196; Export Full Report PDF</button>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <span id="all-count" class="row-count"></span>
+    </div>
     <div class="table-wrap">
     <table id="allTable">
     <thead><tr><th onclick="sortTable('allTable',0,this)" class="sortable">Computer <span class="sort-icon">&#8597;</span></th><th onclick="sortTable('allTable',1,this)" class="sortable">Task <span class="sort-icon">&#8597;</span></th><th onclick="sortTable('allTable',2,this)" class="sortable">Category <span class="sort-icon">&#8597;</span></th><th onclick="sortTable('allTable',3,this)" class="sortable">Method <span class="sort-icon">&#8597;</span></th><th>Data Collected</th><th>Status Detail</th><th onclick="sortTable('allTable',6,this)" class="sortable">IP <span class="sort-icon">&#8597;</span></th><th>File / Line</th>$allSrcHeader</tr></thead>
-    <tbody>$($allTableRows -join '')</tbody>
+    <tbody id='allTbody'></tbody>
     </table>
     </div>
+    <div class="pg-bar" id="all-pagin"></div>
   </div>
 </section>
 
 </div>
-<footer>BloodHound Enterprise &#8212; SharpHound CompStatus Analyser v2.1 &nbsp;|&nbsp; SpecterOps BHE TAM Toolkit &nbsp;|&nbsp; $reportDate</footer>
+<footer>BloodHound Enterprise &#8212; SharpHound CompStatus Analyser v2.1 &nbsp;|&nbsp; SpecterOps TAM Toolkit &nbsp;|&nbsp; $reportDate</footer>
 
 <script>
 // ── Column width auto-fit ──────────────────────────────────────────────────
-function applyColWidths(){
-  var tables=['compTable','failTable','allTable','mcTable'];
-  for(var t=0;t<tables.length;t++){
-    var tbl=document.getElementById(tables[t]);
-    if(!tbl) continue;
-    var maxW=0;
-    tbl.querySelectorAll('tbody .cn-cell').forEach(function(c){
-      c.style.whiteSpace='nowrap';
-      if(c.scrollWidth>maxW) maxW=c.scrollWidth;
-      c.style.whiteSpace='';
-    });
-    if(maxW>0){
-      tbl.querySelectorAll('tbody .cn-cell, thead th:first-child').forEach(function(c){
-        c.style.minWidth=Math.min(maxW+8,340)+'px';
-      });
-    }
-  }
-}
-window.addEventListener('load',function(){ applyColWidths(); initFilters(); buildRemPills(); });
+// applyColWidths removed — cn-cell handles width via CSS (avoids O(n) DOM scan on large datasets)
+window.addEventListener('load',function(){ failFiltered=FAIL_DATA.slice(); allFiltered=ALL_DATA.slice(); initFilters(); buildRemPills(); renderFailPage(1); renderAllPage(1); });
 
-// ── Pre-built subnet lists from PowerShell ────────────────────────────────
-// Avoids DOM-scanning issues; populated at report generation time
+// ── Pre-built data from PowerShell ───────────────────────────────────────
 var COMP_SUBNETS=[$compSubnetJs];
-var FAIL_SUBNETS=[$failSubnetJs];
+var FAIL_DATA=$failJsonData;
+var ALL_DATA=$allJsonData;
+var FAIL_SUBNETS=[$failSubnetJs]; // populated from PS
 
 // ── Chart ──────────────────────────────────────────────────────────────────
 var chartLabels=[$chartLabels],chartValues=[$chartValues],chartColors=[$chartColors];
@@ -1179,7 +1180,10 @@ function applyCompFilters(){
   var cat    =(document.getElementById('comp-cat-filter')||{value:''}).value.toLowerCase();
   var meth   =(document.getElementById('comp-method-filter')||{value:''}).value.toLowerCase();
   var subnet =(document.getElementById('comp-subnet-filter')||{value:''}).value;
-  var hideU  =(document.getElementById('comp-hide-unknown')||{checked:false}).checked;
+  var hideEl=document.getElementById('comp-hide-unknown');
+  // Disable "Hide Unknown IP" when "Unknown IP" subnet is selected — they conflict
+  if(hideEl){ hideEl.disabled=(subnet==='__UNKNOWN__'); if(subnet==='__UNKNOWN__') hideEl.checked=false; }
+  var hideU=(hideEl&&!hideEl.disabled)?hideEl.checked:false;
   document.querySelectorAll('#compTable tbody tr').forEach(function(r){
     var txt=r.textContent.toLowerCase();
     var ip=(r.cells[1]||{textContent:''}).textContent.trim();
@@ -1187,31 +1191,110 @@ function applyCompFilters(){
     if(q&&txt.indexOf(q)<0)show=false;
     if(cat&&txt.indexOf(cat)<0)show=false;
     if(meth&&txt.indexOf(meth)<0)show=false;
-    if(subnet&&subnetOf(ip)!==subnet)show=false;
+    if(subnet==='__UNKNOWN__'&&ip!=='Unknown')show=false;
+    else if(subnet&&subnet!=='__UNKNOWN__'&&subnetOf(ip)!==subnet)show=false;
     if(hideU&&ip==='Unknown')show=false;
     r.style.display=show?'':'none';
   });
 }
 
 // ── Compound filter for failures table ────────────────────────────────────
-function applyFailFilters(){
-  var q      =(document.getElementById('failSearch')||{value:''}).value.toLowerCase();
-  var cat    =(document.getElementById('fail-cat-filter')||{value:''}).value.toLowerCase();
-  var meth   =(document.getElementById('fail-method-filter')||{value:''}).value.toLowerCase();
-  var subnet =(document.getElementById('fail-subnet-filter')||{value:''}).value;
-  var hideU  =(document.getElementById('fail-hide-unknown')||{checked:false}).checked;
-  document.querySelectorAll('#failTable tbody tr').forEach(function(r){
-    var txt=r.textContent.toLowerCase();
-    var ip=(r.cells[6]||{textContent:''}).textContent.trim();
-    var show=true;
-    if(q&&txt.indexOf(q)<0)show=false;
-    if(cat&&txt.indexOf(cat)<0)show=false;
-    if(meth&&txt.indexOf(meth)<0)show=false;
-    if(subnet&&subnetOf(ip)!==subnet)show=false;
-    if(hideU&&ip==='Unknown')show=false;
-    r.style.display=show?'':'none';
-  });
+// ── Virtual pagination engine ──────────────────────────────────────────────
+var PAGE_SIZE=100;
+var failFiltered=[], failPage=1;
+var allFiltered=[],  allPage=1;
+
+var catColors={Success:'#22c55e',NotActive:'#6b7280',PortNotOpen:'#f97316',
+  AccessDenied:'#ef4444',StatusAccessDenied:'#ef4444',RPCError:'#a855f7',
+  RegistryError:'#ec4899',CollectorError:'#f59e0b',Other:'#64748b'};
+var methodColors={'TCP Port Scan':'#0369a1','SMB / NetWkstaUserEnum':'#0f766e',
+  'SMB / SAMRPC':'#0f766e','RPC / LSARPC':'#7c3aed','WMI':'#b45309',
+  'Remote Registry (RRP)':'#9a3412','LDAP':'#1d4ed8','Unknown':'#475569'};
+
+function esc(v){ return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function rowHtml(d, multiFile){
+  var catCol=d.catColor||(catColors[d.cat]||'#64748b');
+  var methCol=methodColors[d.method]||'#475569';
+  var srcCol=multiFile?'<td style="font-size:11px;color:var(--muted)">'+esc(d.src)+'</td>':'';
+  return '<tr data-comp="'+esc(d.cn)+'">'
+    +'<td class="cn-cell" title="'+esc(d.cn)+'">'+esc(d.cn)+'</td>'
+    +'<td style="font-size:12px">'+esc(d.task)+'</td>'
+    +'<td><span class="badge" style="background:'+catCol+'">'+esc(d.cat)+'</span></td>'
+    +'<td class="method-cell"><span class="badge" style="background:'+methCol+';font-size:10px">'+esc(d.method)+'</span></td>'
+    +'<td class="dt-cell">'+esc(d.dtype)+'</td>'
+    +'<td class="status-cell">'+esc(d.status)+'</td>'
+    +'<td style="font-size:12px">'+esc(d.ip)+'</td>'
+    +'<td style="font-family:Consolas,monospace;font-size:11px;color:var(--muted)">'
+      +(d.src?'<span style="color:#64748b">'+esc(d.src)+'</span><br>':'')
+      +'L'+d.line+'</td>'
+    +srcCol
+    +'</tr>';
 }
+
+function matchRow(d, q, cat, meth, subnet, hideU){
+  var search=(d.cn+d.task+d.cat+d.method+d.dtype+d.status+d.ip+d.src).toLowerCase();
+  if(q&&search.indexOf(q)<0) return false;
+  if(cat&&d.cat.toLowerCase().indexOf(cat)<0) return false;
+  if(meth&&d.method.toLowerCase().indexOf(meth)<0) return false;
+  if(subnet==='__UNKNOWN__'&&d.ip!=='Unknown') return false;
+  else if(subnet&&subnet!=='__UNKNOWN__'&&subnetOf(d.ip)!==subnet) return false;
+  if(hideU&&d.ip==='Unknown') return false;
+  return true;
+}
+
+function renderPage(data, page, tbodyId, countId, paginId, multiFile){
+  var start=(page-1)*PAGE_SIZE, end=Math.min(start+PAGE_SIZE,data.length);
+  var tbody=document.getElementById(tbodyId); if(!tbody) return;
+  if(!data.length){
+    tbody.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted)">No results match the current filters.</td></tr>';
+  } else {
+    var html=''; for(var i=start;i<end;i++) html+=rowHtml(data[i], multiFile);
+    tbody.innerHTML=html;
+  }
+  // Update count
+  var cnt=document.getElementById(countId);
+  if(cnt) cnt.textContent='Showing '+Math.min(end,data.length)+' of '+data.length+' rows';
+  // Update pagination
+  var pagin=document.getElementById(paginId); if(!pagin) return;
+  var totalPages=Math.ceil(data.length/PAGE_SIZE)||1;
+  var html='';
+  html+='<button class="pg-btn" onclick="'+paginId.replace('-pagin','')+'GoPage('+Math.max(1,page-1)+')" '+(page<=1?'disabled':'')+'>&#8249; Prev</button>';
+  // show up to 7 page buttons around current
+  var start2=Math.max(1,page-3), end2=Math.min(totalPages,page+3);
+  if(start2>1) html+='<button class="pg-btn" onclick="'+paginId.replace('-pagin','')+'GoPage(1)">1</button>'+(start2>2?'<span class="pg-ellipsis">…</span>':'');
+  for(var p=start2;p<=end2;p++){
+    html+='<button class="pg-btn'+(p===page?' pg-active':'')+'" onclick="'+paginId.replace('-pagin','')+'GoPage('+p+')">'+p+'</button>';
+  }
+  if(end2<totalPages) html+=(end2<totalPages-1?'<span class="pg-ellipsis">…</span>':'')+'<button class="pg-btn" onclick="'+paginId.replace('-pagin','')+'GoPage('+totalPages+')">'+totalPages+'</button>';
+  html+='<button class="pg-btn" onclick="'+paginId.replace('-pagin','')+'GoPage('+Math.min(totalPages,page+1)+')" '+(page>=totalPages?'disabled':'')+'>Next &#8250;</button>';
+  pagin.innerHTML=html;
+}
+
+var IS_MULTI=($isMultiFile ? 'true' : 'false')==='true';
+
+function filterFailData(){
+  var q   =(document.getElementById('failSearch')||{value:''}).value.toLowerCase();
+  var cat =(document.getElementById('fail-cat-filter')||{value:''}).value.toLowerCase();
+  var meth=(document.getElementById('fail-method-filter')||{value:''}).value.toLowerCase();
+  var sn  =(document.getElementById('fail-subnet-filter')||{value:''}).value;
+  var huEl=document.getElementById('fail-hide-unknown');
+  if(huEl){ huEl.disabled=(sn==='__UNKNOWN__'); if(sn==='__UNKNOWN__') huEl.checked=false; }
+  var hu  =(huEl&&!huEl.disabled)?huEl.checked:false;
+  failFiltered=FAIL_DATA.filter(function(d){return matchRow(d,q,cat,meth,sn,hu);});
+  failPage=1; renderFailPage(1);
+}
+function renderFailPage(p){ failPage=p; renderPage(failFiltered,p,'failTbody','fail-count','fail-pagin',IS_MULTI); }
+function failGoPage(p){ renderFailPage(p); }
+function applyFailFilters(){ filterFailData(); }
+
+function filterAllData(){
+  var q=(document.getElementById('allSearch')||{value:''}).value.toLowerCase();
+  allFiltered=ALL_DATA.filter(function(d){ return d.cn.toLowerCase().indexOf(q)>=0||d.task.toLowerCase().indexOf(q)>=0||d.status.toLowerCase().indexOf(q)>=0||d.ip.toLowerCase().indexOf(q)>=0||d.cat.toLowerCase().indexOf(q)>=0; });
+  allPage=1; renderAllPage(1);
+}
+function renderAllPage(p){ allPage=p; renderPage(allFiltered,p,'allTbody','all-count','all-pagin',IS_MULTI); }
+function allGoPage(p){ renderAllPage(p); }
 
 function clearAllTableFilters(){
   var pairs=[['compSearch','compTable'],['failSearch','failTable'],['allSearch','allTable']];
@@ -1230,6 +1313,18 @@ function clearAllTableFilters(){
 
 // ── Export visible rows to CSV ─────────────────────────────────────────────
 function exportTable(tid,name){
+  // For paginated tables, export from data array not DOM
+  if(tid==='failTable'||tid==='allTable'){
+    var data=tid==='failTable'?failFiltered:allFiltered;
+    var headers='"Computer","Task","Category","Method","Data Collected","Status","IP","Line"'+(IS_MULTI?',"Source File"':'');
+    var rows=[headers];
+    data.forEach(function(d){
+      rows.push([d.cn,d.task,d.cat,d.method,d.dtype,d.status,d.ip,d.line].map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(',')+(IS_MULTI?',"'+d.src.replace(/"/g,'""')+'"':''));
+    });
+    var blob=new Blob([rows.join('\r\n')],{type:'text/csv'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download='BHE-'+name+'-export-'+new Date().toISOString().slice(0,10)+'.csv';a.click();return;
+  }
   var tbl=document.getElementById(tid);
   if(!tbl)return;
   var rows=[];
