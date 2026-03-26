@@ -13,14 +13,20 @@ Parses the `*_compstatus.csv` output from SharpHound Enterprise collection jobs 
 ### Interactive menu
 
 <!-- Replace with: ![Menu](screenshots/menu.png) -->
-> 📷 *Paste a screenshot of the PowerShell menu here*
+><img width="973" height="533" alt="image" src="https://github.com/user-attachments/assets/6e25bb51-ed32-41b3-a22a-8fbb19a5cbbb" />
+
 
 ---
 
 ### HTML report
 
 <!-- Replace with: ![Report](screenshots/report.png) -->
-> 📷 *Paste a screenshot of the HTML report here*
+> <img width="1864" height="926" alt="image" src="https://github.com/user-attachments/assets/920d17d8-f328-4247-bb55-e76ba689b188" />
+
+> <img width="937" height="479" alt="image" src="https://github.com/user-attachments/assets/fd51b756-d0a8-4ded-a90b-f8a314c7ea4b" />
+
+<img width="1852" height="815" alt="image" src="https://github.com/user-attachments/assets/f83fce64-17b7-4dcd-853e-b365ef8739a9" />
+
 
 ---
 
