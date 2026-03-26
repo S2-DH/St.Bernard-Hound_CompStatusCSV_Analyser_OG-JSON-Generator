@@ -271,8 +271,8 @@ function Import-CompStatusCsv([string]$Path) {
 
 Write-Host ''
 Write-Host '  +------------------------------------------------------+' -ForegroundColor Cyan
-Write-Host '  |  BloodHound Enterprise - CompStatus Analyser  v1.0  |' -ForegroundColor Cyan
-Write-Host '  |  BHE Toolkit v1.0                             |' -ForegroundColor Cyan
+Write-Host '  |  BloodHound Enterprise - CompStatus Analyser  v1.0   |' -ForegroundColor Cyan
+Write-Host '  |  BHE Toolkit v1.0                                    |' -ForegroundColor Cyan
 Write-Host '  +------------------------------------------------------+' -ForegroundColor Cyan
 Write-Host ''
 
