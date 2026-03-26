@@ -70,8 +70,8 @@ When more than one CSV is found:
 
 ```
   +------------------------------------------------------+
-  |  BloodHound Enterprise - CompStatus Analyser  v1.0  |
-  |  BHE Toolkit v1.0                             |
+  |  BloodHound Enterprise - CompStatus Analyser  v1.0   |
+  |  BHE Toolkit v1.0                                    |
   +------------------------------------------------------+
 
   [*] Found 3 compstatus file(s) in: C:\BHELogs
