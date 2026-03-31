@@ -318,11 +318,7 @@ Step 3: HMAC( hash2,     requestBody        ) → sig
 Sent as three headers: `Authorization: bhesignature <tokenId>`, `RequestDate`, `Signature`.
 
 ---
-
-## Known Limitations
-
-## Large Environments — Chunking
-
+**## Large Environments — Chunking**
 BHE's UI upload has a file size limit of approximately 10MB. For large environments (thousands of computers) the generated JSON may exceed this. Use `-ChunkSize` to split the output into multiple smaller files.
 ```powershell
 # Split into 500-computer chunks
@@ -342,6 +338,9 @@ The script will output each part file path in the console:
 Upload each file individually via **Explore -> Upload Data**. BHE merges them into the same graph. The collector node (`SBHCollector`) is included in every chunk so edges always resolve regardless of upload order. You can upload a subset to see a partial graph first — upload more chunks to expand it.
 
 **Choosing a chunk size:** Start with `-ChunkSize 500`. If files are still over ~8MB reduce to `-ChunkSize 300`.
+---
+
+## Known Limitations
 
 **AGE/CySQL (self-hosted BHE):**
 - `STARTS WITH` on `type(r)` is unsupported — use explicit edge kind names
