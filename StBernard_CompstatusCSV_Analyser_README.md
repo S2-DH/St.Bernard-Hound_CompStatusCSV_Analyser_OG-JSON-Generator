@@ -48,7 +48,8 @@ Custom Font Awesome icons visually distinguish node types at a glance:
 *The HTML report generated alongside the OG JSON. Includes interactive filters, remediation guidance per failure category, and the computer spotlight search.*
 
 ### BHE Explore - Graph View
-![BHE Explore graph showing SBHCollector node (HEIMDALL) connected to SBHComputerOK (green house), SBHComputerFail (red house), and SBHComputerUnknown (skull) nodes via typed SBH_ edges](_screenshots/03_bhe_graph.png)
+<img width="1510" height="1141" alt="image" src="https://github.com/user-attachments/assets/5391602c-d3c8-44a9-9216-3d10baf0133c" />
+
 *After ingesting the OG JSON into BloodHound Explore. The collector node sits at the centre; green/red/skull icons show collection outcome per computer.*
 
 ### Custom Node Icons
