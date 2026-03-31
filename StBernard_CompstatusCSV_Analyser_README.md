@@ -90,7 +90,8 @@ Skull = no IP or SID resolved.*
 
 # 4. **Large environments ** — split the json into chunks when file exceeds ~10MB
 .\StBernard_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 500
-# Produces _part01.json, _part02.json etc. — upload each separately
+
+_* This Produces _part01.json, _part02.json etc. — upload each separately_
 ```
 
 ---
