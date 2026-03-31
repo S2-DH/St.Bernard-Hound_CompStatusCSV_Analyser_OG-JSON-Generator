@@ -88,7 +88,10 @@ Skull = no IP or SID resolved.*
     -BHETokenId     "your-token-id" `
     -BHETokenKey    "your-token-key"
 ```
-
+# **Large environments **
+— split the json into chunks when file exceeds ~10MB
+.\StBernard_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 500
+# Produces _part01.json, _part02.json etc. — upload each separately
 ---
 
 ## New Parameters
@@ -103,6 +106,7 @@ Skull = no IP or SID resolved.*
 | `-BHETokenId` | String | API Token ID from BHE Settings → API Keys |
 | `-BHETokenKey` | String | API Token Key from BHE Settings → API Keys |
 | `-BHEBearerToken` | String | JWT Bearer token (alternative to TokenId/Key — copy from API Explorer) |
+| `-ChunkSize` | Int | Max computers per output JSON. Default `0` = single file. Use when file exceeds BHE's ~10MB upload limit. Example: `-ChunkSize 500` |
 
 ---
 
@@ -316,6 +320,28 @@ Sent as three headers: `Authorization: bhesignature <tokenId>`, `RequestDate`, `
 ---
 
 ## Known Limitations
+
+## Large Environments — Chunking
+
+BHE's UI upload has a file size limit of approximately 10MB. For large environments (thousands of computers) the generated JSON may exceed this. Use `-ChunkSize` to split the output into multiple smaller files.
+```powershell
+# Split into 500-computer chunks
+.\StBernard_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 500
+
+# Adjust if files are still too large
+.\StBernard_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 200
+```
+
+The script will output each part file path in the console:
+```
+  OG JSON files (upload each separately):
+    Part 01  : C:\...\StBernard_CompstatusCSV_Analyser_OG_2026-03-30_part01.json
+    Part 02  : C:\...\StBernard_CompstatusCSV_Analyser_OG_2026-03-30_part02.json
+```
+
+Upload each file individually via **Explore -> Upload Data**. BHE merges them into the same graph. The collector node (`SBHCollector`) is included in every chunk so edges always resolve regardless of upload order. You can upload a subset to see a partial graph first — upload more chunks to expand it.
+
+**Choosing a chunk size:** Start with `-ChunkSize 500`. If files are still over ~8MB reduce to `-ChunkSize 300`.
 
 **AGE/CySQL (self-hosted BHE):**
 - `STARTS WITH` on `type(r)` is unsupported — use explicit edge kind names
