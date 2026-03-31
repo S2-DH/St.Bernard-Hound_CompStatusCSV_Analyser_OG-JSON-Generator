@@ -318,7 +318,7 @@ Step 3: HMAC( hash2,     requestBody        ) → sig
 Sent as three headers: `Authorization: bhesignature <tokenId>`, `RequestDate`, `Signature`.
 
 ---
-****## Large Environments — Chunking****
+## Large Environments — Chunking
 
 BHE's UI upload has a file size limit of approximately 10MB. For large environments (thousands of computers) the generated JSON may exceed this. Use `-ChunkSize` to split the output into multiple smaller files.
 ```powershell
