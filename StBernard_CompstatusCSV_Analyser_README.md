@@ -66,9 +66,6 @@ Skull = no IP or SID resolved.*
 **_Example:_**
 <img width="1299" height="217" alt="image" src="https://github.com/user-attachments/assets/17573776-09f2-4b8e-868a-a0d71a77b51b" />
 
-
-> **To add your own screenshots:** create a `_screenshots/` folder alongside the script and README, and save your captures using the filenames above.
-
 ---
 
 ## Quick Start
