@@ -35,7 +35,10 @@ Custom Font Awesome icons visually distinguish node types at a glance:
 ## Screenshots
 
 ### PowerShell Console Output
-![PowerShell output showing script run with -ExportOpenGraph and -UploadIcons flags, displaying the export summary, edge types, Cypher queries, and icon upload confirmation](_screenshots/01_powershell_output.png)
+![PowerShell output showing script run with -ExportOpenGraph and -UploadIcons flags, displaying the export summary, edge types, Cypher queries, and icon upload confirmation](<img width="1198" height="640" alt="image" src="https://github.com/user-attachments/assets/cc3e2149-65ba-4511-a277-3df604490239" />
+)<img width="1228" height="491" alt="image" src="https://github.com/user-attachments/assets/ca4f9b8b-651b-49e7-bb18-8046b0d0903d" /><img width="660" height="357" alt="image" src="https://github.com/user-attachments/assets/f4210034-b349-414c-ae28-9e8a47687427" />
+
+
 *Console output from a full run with `-ExportOpenGraph -UploadIcons`. Shows export summary, edge type breakdown, Cypher query reference, and icon registration confirmation.*
 
 ### HTML Analysis Report
