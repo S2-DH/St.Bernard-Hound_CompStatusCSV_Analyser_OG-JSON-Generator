@@ -56,9 +56,14 @@ Custom Font Awesome icons visually distinguish node types at a glance:
 <img width="297" height="75" alt="image" src="https://github.com/user-attachments/assets/4d84c957-9f81-4011-8517-103849c6809b" />
 
 
-*Blue = collector, Green = full success, Red = at least one failure, Skull = no IP or SID resolved.*
+*Blue = collector
+Green = full success
+Red = at least one failure
+Skull = no IP or SID resolved.*
 
-*Note: A red node with a "SBH_CollectionOK" implies Collection is possible, however there is also a failed call (In this instance "SBH_RPCError")
+*Note: Red nodes can show the EDGE "SBH_CollectionOK", this would imply Collection is possible, however there is also a failed call (In this instance "SBH_RPCError") - You would need to review the node to see the additional failed relationships.
+
+**_Example:_**
 <img width="1299" height="217" alt="image" src="https://github.com/user-attachments/assets/17573776-09f2-4b8e-868a-a0d71a77b51b" />
 
 
