@@ -1,22 +1,20 @@
-[StBernard_CompstatusCSV_Analyser_README.md](https://github.com/user-attachments/files/26375123/StBernard_CompstatusCSV_Analyser_README.md)
+[SharpHound_CompstatusCSV_Analyser_README.md](https://github.com/user-attachments/files/26375123/SharpHound_CompstatusCSV_Analyser_README.md)
 
-<img width="80" height="100" alt="image" src="https://github.com/user-attachments/assets/8cfbe34e-2d5b-41d7-a5c8-e76756701370" /> 
-
-**# St.Bernard Compstatus.csv Analyser**
+**# SharpHound Compstatus.csv Analyser**
 
 > *Image: Freepik Premium resource. Free users must attribute: "Image by pch.vector on Freepik". Premium subscribers may use without attribution.*
 
 
-**Project:** StBernard_CompstatusCSV_Analyser  
+**Project:** SharpHound_CompstatusCSV_Analyser  
 **Version:** 3.0  
-**Script:** `StBernard_CompstatusCSV_Analyser.ps1`  
+**Script:** `SharpHound_CompstatusCSV_Analyser.ps1`  
 **Requires:** PowerShell 5.1+, BloodHound Enterprise or CE v8.0+ (PostgreSQL backend)
 
 ---
 
 ## Overview
 
-StBernardHound extends the CompStatus CSV analyser to produce a **BloodHound OpenGraph JSON** from your SharpHound compstatus CSV data. Once ingested into BHE, it graphs every SharpHound collector-to-computer relationship with typed edges representing the specific collection failure (or success) — making collection coverage gaps and connectivity issues visible directly in the BHE Explore graph.
+SharpHound CompStatus CSV analyser extends to produce a **BloodHound OpenGraph JSON** from your SharpHound compstatus CSV data. Once ingested into BHE, it graphs every SharpHound collector-to-computer relationship with typed edges representing the specific collection failure (or success) — making collection coverage gaps and connectivity issues visible directly in the BHE Explore graph.
 
 The graph model is:
 
@@ -89,7 +87,7 @@ Skull = no IP or SID resolved.*
     -BHETokenKey    "your-token-key"
 
 # 4. **Large environments ** — split the json into chunks when file exceeds ~10MB
-.\StBernard_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 500
+.\SharpHound_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 500
 
 Note: This Produces _part01.json, _part02.json etc. — Combine to a zip file to upload.
 ```
@@ -100,7 +98,7 @@ Note: This Produces _part01.json, _part02.json etc. — Combine to a zip file to
 
 | Parameter | Type | Description |
 |---|---|---|
-| `-ExportOpenGraph` | Switch | Generates the StBernardHound JSON alongside the HTML report |
+| `-ExportOpenGraph` | Switch | Generates the SharpHound JSON alongside the HTML report |
 | `-CollectorName` | String | Label for the collector node. Defaults to `$env:COMPUTERNAME` |
 | `-OGOutputFolder` | String | Output folder for JSON and Cypher pack. Defaults to the HTML report folder |
 | `-UploadIcons` | Switch | Uploads custom node icons to BHE after export. Requires `-BHEUrl` + auth |
@@ -118,7 +116,7 @@ Each run with `-ExportOpenGraph` produces two files alongside the HTML report:
 
 | File | Description |
 |---|---|
-| `StBernard_CompstatusCSV_Analyser_OG_<timestamp>.json` | OpenGraph payload — upload to BHE via Explore → Upload Data |
+| `SharpHound_CompstatusCSV_Analyser_OG_<timestamp>.json` | OpenGraph payload — upload to BHE via Explore → Upload Data |
 
 ---
 
@@ -126,12 +124,12 @@ Each run with `-ExportOpenGraph` produces two files alongside the HTML report:
 
 ### Step 1 — Upload the graph data
 
-**BHE UI:** Explore → Upload Data → select `StBernardHound_<timestamp>.json`
+**BHE UI:** Explore → Upload Data → select `SharpHound_<timestamp>.json`
 
 **API (PowerShell):**
 ```powershell
 # Multipart upload via BHE API
-$form = @{ file = Get-Item ".\StBernardHound_2026-03-30.json" }
+$form = @{ file = Get-Item ".\SharpHound_2026-03-30.json" }
 Invoke-RestMethod -Uri "https://your-bhe.local/api/v2/file-upload" `
     -Method Post -Headers $authHeaders -Form $form
 ```
@@ -203,7 +201,7 @@ Each edge carries these properties:
 | `tasks_failed` | Comma-separated list of SharpHound task names |
 | `collection_methods` | Protocols involved (SMB, RPC, WMI etc.) |
 | `ip_address` | IP address of the target computer |
-| `source` | Always `StBernardHound` |
+| `source` | Always `SharpHound` |
 | `source_files` | CSV filename(s) — populated in multi-file mode |
 
 ---
@@ -216,9 +214,9 @@ Each edge carries these properties:
 |---|---|
 | `name` | Collector hostname (uppercase) |
 | `displayname` | Collector hostname |
-| `description` | `StBernardHound SharpHound Collector` |
+| `description` | `SharpHound Collector` |
 | `generated_at` | UTC timestamp of JSON generation |
-| `source` | `StBernardHound` |
+| `source` | `SharpHound` |
 
 ### SBHComputerOK / SBHComputerFail / SBHComputerUnknown
 
@@ -229,11 +227,11 @@ Each edge carries these properties:
 | `objectsid` | AD SID from CSV ObjectID column (if present) — for correlation with BHE AD data |
 | `ipaddress` | IP address from CSV |
 | `trafficlight` | `green`, `orange`, or `red` |
-| `source` | `StBernardHound` |
+| `source` | `SharpHound` |
 
 > **SBHComputerUnknown** is assigned when a computer has neither an IP address nor an AD SID in the CSV — SharpHound recorded the machine name but could not resolve anything further. These are the most invisible computers in your environment and typically the hardest to remediate. Common causes: stale AD objects, DNS failures, or machines in isolated network segments.
 
-The `objectsid` property lets you correlate StBernardHound nodes with existing BHE Computer nodes from SharpHound data:
+The `objectsid` property lets you correlate SharpHound nodes with existing BHE Computer nodes from SharpHound data:
 ```cypher
 MATCH (sbh:SBHComputerFail), (ad:Computer)
 WHERE sbh.objectsid = ad.objectid
@@ -306,7 +304,7 @@ Generate an API token in BHE for use with `-UploadIcons`:
 
 1. BHE UI → **Settings → API Keys → Create API Key**  
    *or* top-right corner → **My Profile → API Key Management → Create Token**
-2. Give it a descriptive name (e.g. `StBernardHound`)
+2. Give it a descriptive name (e.g. `SharpHound`)
 3. Save both the **Token ID** and **Token Key** — the key is shown only once
 4. Pass them to the script as `-BHETokenId` and `-BHETokenKey`
 
@@ -325,17 +323,17 @@ Sent as three headers: `Authorization: bhesignature <tokenId>`, `RequestDate`, `
 BHE's UI upload has a file size limit of approximately 10MB. For large environments (thousands of computers) the generated JSON may exceed this. Use `-ChunkSize` to split the output into multiple smaller files.
 ```powershell
 # Split into 500-computer chunks
-.\StBernard_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 500
+.\SharpHound_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 500
 
 # Adjust if files are still too large
-.\StBernard_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 200
+.\SharpHound_CompstatusCSV_Analyser.ps1 -ExportOpenGraph -ChunkSize 200
 ```
 
 The script will output each part file path in the console:
 ```
   OG JSON files (upload each separately):
-    Part 01  : C:\...\StBernard_CompstatusCSV_Analyser_OG_2026-03-30_part01.json
-    Part 02  : C:\...\StBernard_CompstatusCSV_Analyser_OG_2026-03-30_part02.json
+    Part 01  : C:\...\SharpHound_CompstatusCSV_Analyser_OG_2026-03-30_part01.json
+    Part 02  : C:\...\SharpHound_CompstatusCSV_Analyser_OG_2026-03-30_part02.json
 ```
 
 Upload each file individually via **Explore -> Upload Data**. BHE merges them into the same graph. The collector node (`SBHCollector`) is included in every chunk so edges always resolve regardless of upload order. You can upload a subset to see a partial graph first — upload more chunks to expand it.
@@ -350,12 +348,12 @@ Upload each file individually via **Explore -> Upload Data**. BHE merges them in
 - Any edge kind referenced in a pipe list (`r:A|B|C`) must have at least one edge in the graph or the query fails — the script builds pipe lists dynamically per run to handle this
 
 **OpenGraph:**
-- StBernardHound nodes (`SBHComputerOK`, `SBHComputerFail`) are separate from BHE's native SharpHound `Computer` nodes — they do not merge automatically
+- SharpHound nodes (`SBHComputerOK`, `SBHComputerFail`) are separate from BHE's native SharpHound `Computer` nodes — they do not merge automatically
 - Use the `objectsid` property to manually correlate with AD Computer nodes if needed
 - Icons must be registered once via the API before they appear — they are not part of the graph JSON
 
 **Re-ingesting:**
-- Each JSON upload adds new nodes/edges. If you re-run and re-ingest, you may end up with duplicate StBernardHound nodes from previous runs. Clear old data via Cypher before re-ingesting if needed:
+- Each JSON upload adds new nodes/edges. If you re-run and re-ingest, you may end up with duplicate SharpHound nodes from previous runs. Clear old data via Cypher before re-ingesting if needed:
 ```cypher
 MATCH (n:SBHCollector) DETACH DELETE n
 MATCH (n:SBHComputerOK) DETACH DELETE n
@@ -369,10 +367,10 @@ MATCH (n:SBHComputerUnknown) DETACH DELETE n
 
 | File | Description |
 |---|---|
-| `BHE_Analyse_CompStatusCSV.ps1` | Main script — St.Bernard-Hound v1 |
-| `StBernardHound_<timestamp>.json` | OpenGraph graph payload — upload to BHE |
-| `StBernard_CompstatusCSV_Analyser_Report_<mode>_<timestamp>.html` | HTML analysis report |
+| `BHE_Analyse_CompStatusCSV.ps1` | Main script — SharpHoundHound CompStatusCSV Analyser v1 |
+| `SharpHound_<timestamp>.json` | OpenGraph graph payload — upload to BHE |
+| `SharpHound_CompstatusCSV_Analyser_Report_<mode>_<timestamp>.html` | HTML analysis report |
 
 ---
 
-*St.Bernard-Hound - CompStatus CSV Analyser & OG JSON Generator v1 — SDH / SpecterOps TAM*
+*SharpHound - CompStatus CSV Analyser & OG JSON Generator v1 — SDH / SpecterOps TAM*
