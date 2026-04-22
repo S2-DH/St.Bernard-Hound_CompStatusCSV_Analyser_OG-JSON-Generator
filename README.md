@@ -38,7 +38,7 @@ Custom Font Awesome icons visually distinguish node types at a glance:
 *Console output from a full run with `-ExportOpenGraph -UploadIcons`. Shows export summary, edge type breakdown, Cypher query reference, and icon registration confirmation.*
 
 ### HTML Analysis Report
-<img width="1863" height="910" alt="image" src="https://github.com/user-attachments/assets/9cc06660-b9bf-4698-a9b2-e91a8c1a4a76" />
+<img width="1877" height="901" alt="image" src="https://github.com/user-attachments/assets/27ac260a-1379-4ce2-8817-a9e6a3050288" />
 
 *The HTML report generated alongside the OG JSON. Includes interactive filters, remediation guidance per failure category, and the computer spotlight search.*
 
